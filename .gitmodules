@@ -1,0 +1,6 @@
+[submodule "Dependencies/GWCA"]
+	path = Dependencies/GWCA
+	url = git@github.com:MikeJerred/GWCA.git
+[submodule "Dependencies/gbr.Shared"]
+	path = Dependencies/gbr.Shared
+	url = git@github.com:MikeJerred/gbr.Shared.git

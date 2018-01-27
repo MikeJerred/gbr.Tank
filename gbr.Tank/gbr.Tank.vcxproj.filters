@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Utilities">
+      <UniqueIdentifier>{bd6a2aa7-0180-4c8c-9b68-1dab2ee7f8ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controllers">
+      <UniqueIdentifier>{30b8cfe8-0695-46dd-87cc-eeb7777013dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controllers\City">
+      <UniqueIdentifier>{9ff701a1-1194-42f6-bc24-a2a8ff542e82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controllers\Foundry">
+      <UniqueIdentifier>{a7e8d1f6-991f-4b88-a796-0a11d27ec312}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controllers\Veil">
+      <UniqueIdentifier>{7d04a96c-e29e-44d4-977f-706c73d9900e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controllers\Gloom">
+      <UniqueIdentifier>{78110dcc-03b3-4792-90d4-65d19b6a710b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Root.cpp" />
+    <ClCompile Include="Utilities\LogUtility.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\SkillUtility.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Controllers\RunController.cpp">
+      <Filter>Controllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Controllers\City\CityController.cpp">
+      <Filter>Controllers\City</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Root.h" />
+    <ClInclude Include="Utilities\LogUtility.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\SkillUtility.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Controllers\RunController.h">
+      <Filter>Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Controllers\City\CityController.h">
+      <Filter>Controllers\City</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

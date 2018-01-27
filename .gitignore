@@ -1,0 +1,6 @@
+# Build directories
+Debug/
+Release/
+ipch/
+
+\.vs/
