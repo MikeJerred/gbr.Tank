@@ -122,18 +122,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Controllers\City\CityController.cpp" />
+    <ClCompile Include="Controllers\ConsController.cpp" />
     <ClCompile Include="Controllers\RunController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Root.cpp" />
     <ClCompile Include="Utilities\LogUtility.cpp" />
     <ClCompile Include="Utilities\SkillUtility.cpp" />
+    <ClCompile Include="Utilities\SleepUtility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Controllers\City\CityController.h" />
+    <ClInclude Include="Controllers\ConsController.h" />
     <ClInclude Include="Controllers\RunController.h" />
     <ClInclude Include="Root.h" />
     <ClInclude Include="Utilities\LogUtility.h" />
     <ClInclude Include="Utilities\SkillUtility.h" />
+    <ClInclude Include="Utilities\SleepUtility.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Dependencies\gbr.Shared\gbr.Shared.vcxproj">

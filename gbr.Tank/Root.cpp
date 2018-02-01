@@ -13,12 +13,16 @@ namespace gbr::Tank {
 
 		Utilities::LogUtility::Init(playerName);
 
+		consController = new Controllers::ConsController();
 		runController = new Controllers::RunController();
 
 		mustQuit = false;
 	}
 
 	Root::~Root() {
+		if (consController)
+			delete consController;
+
 		if (runController)
 			delete runController;
 

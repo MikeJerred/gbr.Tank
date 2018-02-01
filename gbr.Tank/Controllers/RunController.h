@@ -1,9 +1,11 @@
 #pragma once
 
+#include <experimental/resumable>
 #include "City/CityController.h"
 
 namespace gbr::Tank::Controllers {
-	enum State {
+	enum class State {
+		Sleeping,
 		Begin,
 		City,
 		Veil,
@@ -17,6 +19,8 @@ namespace gbr::Tank::Controllers {
 		DWORD hookId;
 		State state;
 		City::CityController* cityController;
+
+		DWORD sleepUntilTick;
 
 		void Tick();
 	public:

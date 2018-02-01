@@ -35,6 +35,12 @@
     <ClCompile Include="Controllers\City\CityController.cpp">
       <Filter>Controllers\City</Filter>
     </ClCompile>
+    <ClCompile Include="Utilities\SleepUtility.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Controllers\ConsController.cpp">
+      <Filter>Controllers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Root.h" />
@@ -49,6 +55,12 @@
     </ClInclude>
     <ClInclude Include="Controllers\City\CityController.h">
       <Filter>Controllers\City</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\SleepUtility.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Controllers\ConsController.h">
+      <Filter>Controllers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

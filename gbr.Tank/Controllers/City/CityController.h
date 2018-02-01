@@ -1,7 +1,7 @@
 #pragma once
 
 namespace gbr::Tank::Controllers::City {
-	enum State {
+	enum class State {
 		Begin,
 		End
 	};

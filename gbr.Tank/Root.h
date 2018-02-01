@@ -4,6 +4,7 @@
 #include <thread>
 #include <GWCA/GWCA.h>
 
+#include "Controllers/ConsController.h"
 #include "Controllers/RunController.h"
 #include "Utilities/LogUtility.h"
 
@@ -14,6 +15,7 @@ namespace gbr::Tank {
 		static Root* instance;
 		static bool mustQuit;
 
+		Controllers::ConsController* consController;
 		Controllers::RunController* runController;
 
 		Root(HMODULE hModule);
