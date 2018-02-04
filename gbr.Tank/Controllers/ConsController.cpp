@@ -51,13 +51,13 @@ namespace gbr::Tank::Controllers {
 		}
 	}
 
-	bool IsPartyAlive() {
+	bool ConsController::IsPartyAlive() {
 		auto mapAgents = GW::Agents::GetMapAgentArray();
 		if (!mapAgents.valid())
 			return false;
 
 		auto playerCount = GW::Agents::GetAmountOfPlayersInInstance();
-		for (int i = 1; i <= playerCount; ++i) {
+		for (DWORD i = 1; i <= playerCount; ++i) {
 			auto agentId = GW::Agents::GetAgentIdByLoginNumber(i);
 			if (agentId <= 0 || agentId >= mapAgents.size() || mapAgents[agentId].GetIsDead())
 				return false;
@@ -66,7 +66,7 @@ namespace gbr::Tank::Controllers {
 		return true;
 	}
 
-	bool ShouldUseConsumable(DWORD skillId) {
+	bool ConsController::ShouldUseConsumable(DWORD skillId) {
 		auto agentEffects = GW::Effects::GetPartyEffectArray();
 		if (!agentEffects.valid())
 			return false;
@@ -84,7 +84,7 @@ namespace gbr::Tank::Controllers {
 		return true;
 	}
 
-	bool UseConsumable(DWORD itemId) {
+	bool ConsController::UseConsumable(DWORD itemId) {
 		auto bags = GW::Items::GetBagArray();
 
 		if (!bags)

@@ -35,11 +35,15 @@
     <ClCompile Include="Controllers\City\CityController.cpp">
       <Filter>Controllers\City</Filter>
     </ClCompile>
-    <ClCompile Include="Utilities\SleepUtility.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
     <ClCompile Include="Controllers\ConsController.cpp">
       <Filter>Controllers</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\RunUtility.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="Awaitable.cpp" />
+    <ClCompile Include="Utilities\AgentUtility.cpp">
+      <Filter>Utilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -56,11 +60,15 @@
     <ClInclude Include="Controllers\City\CityController.h">
       <Filter>Controllers\City</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities\SleepUtility.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
     <ClInclude Include="Controllers\ConsController.h">
       <Filter>Controllers</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\RunUtility.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Awaitable.h" />
+    <ClInclude Include="Utilities\AgentUtility.h">
+      <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

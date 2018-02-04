@@ -1,17 +1,16 @@
 #pragma once
 
-namespace gbr::Tank::Controllers::City {
-	enum class State {
-		Begin,
-		End
-	};
+#include <vector>
 
+namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
-		State state;
+		DWORD _maintainEnchantsHookId;
 	public:
 		CityController();
+		~CityController();
 
-		State Tick();
+		concurrency::task<void> DoRun();
+		void MaintainEnchants();
 	};
 }

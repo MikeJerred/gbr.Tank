@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <thread>
 #include <GWCA/GWCA.h>
 #include <GWCA/Managers/GameThreadMgr.h>
@@ -5,70 +6,59 @@
 #include <GWCA/Managers/PartyMgr.h>
 
 #include "../Utilities/LogUtility.h"
-#include "../Utilities/SleepUtility.h"
+#include "../Utilities/RunUtility.h"
 #include "RunController.h"
 
 namespace gbr::Tank::Controllers {
 	using LogUtility = Utilities::LogUtility;
-	using SleepUtility = Utilities::SleepUtility;
+	using RunUtility = Utilities::RunUtility;
 
 	RunController::RunController() {
-		state = State::Begin;
-		hookId = GW::GameThread::AddPermanentCall([this]() {
-			Tick();
+		_hookId = GW::GameThread::AddPermanentCall([]() {
+			auto awaitableIterator = std::find_if(Awaitable::Awaitables.begin(), Awaitable::Awaitables.end(), [](Awaitable* element) {
+				return element && element->hasFinished();
+			});
+
+			if (awaitableIterator != Awaitable::Awaitables.end()) {
+				auto awaitable = *awaitableIterator;
+				Awaitable::Awaitables.erase(awaitableIterator);
+				awaitable->complete();
+			}
 		});
+
+		GW::GameThread::Enqueue([]() { RunController::DoRun(); });
 	}
 
 	RunController::~RunController() {
-		GW::GameThread::RemovePermanentCall(hookId);
+		GW::GameThread::RemovePermanentCall(_hookId);
 	}
 
-	void RunController::Tick() {
-		for (auto& awaitable : SleepUtility::SleepAwaitables) {
-			if (awaitable.hasFinished())
-				awaitable.complete();
+	concurrency::task<void> RunController::DoRun() {
+
+		while (GW::Map::GetInstanceType() != GW::Constants::InstanceType::Outpost) {
+			co_await Sleep(3000);
 		}
 
-		/*if (SleepUtility::IsSleeping())
-			return;*/
+		LogUtility::Log(L"Starting a run");
 
+		// run to city entrance
+		co_await RunUtility::FollowWaypoints(std::vector<GW::GamePos>{
+			GW::GamePos(5646.0f, -16987.0f),
+			GW::GamePos(6854.0f, -15241.0f),
+			GW::GamePos(7162.0f, -13127.0f),
+			GW::GamePos(9370.0f, -10381.0f),
+			GW::GamePos(11423.0f, -11418.0f),
+		});
 
-		if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Loading)
-			return;
-
-		if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Explorable && GW::PartyMgr::GetIsPartyDefeated()) {
-			LogUtility::Log(L"Returning to outpost");
-			// return to outpost
-			state = State::Begin;
-			return;
+		while (GW::Map::GetInstanceType() != GW::Constants::InstanceType::Explorable) {
+			co_await Sleep(1000);
 		}
 
-		if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Outpost) {
-			state = State::Begin;
-		}
+		auto cityController = new City::CityController();
 
-		switch (state) {
-		case State::Begin:
-			// assume that we are starting in DoA outpost, with all party members added in HM
+		co_await cityController->DoRun();
 
-			LogUtility::Log(L"Starting a run");
+		delete cityController;
 
-			// run to city entrance
-
-			cityController = new City::CityController();
-			state = State::City;
-			break;
-		case State::City:
-			if (cityController->Tick() == City::State::End) {
-				LogUtility::Log(L"Starting Veil");
-				delete cityController;
-				//veilController = new Veil::VeilController();
-				state = State::Veil;
-			};
-			break;
-		case State::End:
-			// resign, return to outpost, collect gems, start again
-			break;
-		}
 	}
 }

@@ -9,6 +9,9 @@ namespace gbr::Tank::Controllers {
 		DWORD sleepUntilTick;
 
 		void Tick();
+		bool IsPartyAlive();
+		bool ShouldUseConsumable(DWORD skillId);
+		bool UseConsumable(DWORD itemId);
 	public:
 		ConsController();
 		~ConsController();
