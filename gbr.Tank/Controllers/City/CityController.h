@@ -5,12 +5,12 @@
 namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
-		DWORD _maintainEnchantsHookId;
 	public:
 		CityController();
 		~CityController();
 
-		concurrency::task<void> DoRun();
-		void MaintainEnchants();
+		concurrency::task<bool> DoRun();
+		concurrency::task<bool> MaintainEnchants();
+		concurrency::task<bool> WaitForBonds();
 	};
 }

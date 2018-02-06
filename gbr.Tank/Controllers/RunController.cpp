@@ -42,13 +42,14 @@ namespace gbr::Tank::Controllers {
 		LogUtility::Log(L"Starting a run");
 
 		// run to city entrance
-		co_await RunUtility::FollowWaypoints(std::vector<GW::GamePos>{
-			GW::GamePos(5646.0f, -16987.0f),
-			GW::GamePos(6854.0f, -15241.0f),
-			GW::GamePos(7162.0f, -13127.0f),
-			GW::GamePos(9370.0f, -10381.0f),
-			GW::GamePos(11423.0f, -11418.0f),
-		});
+		co_await RunUtility::FollowWaypoints(
+			std::vector<GW::GamePos>{
+				GW::GamePos(5646.0f, -16987.0f),
+				GW::GamePos(6854.0f, -15241.0f),
+				GW::GamePos(7162.0f, -13127.0f),
+				GW::GamePos(9370.0f, -10381.0f),
+				GW::GamePos(11423.0f, -11418.0f),
+			});
 
 		while (GW::Map::GetInstanceType() != GW::Constants::InstanceType::Explorable) {
 			co_await Sleep(1000);
@@ -56,7 +57,7 @@ namespace gbr::Tank::Controllers {
 
 		auto cityController = new City::CityController();
 
-		co_await cityController->DoRun();
+		auto success = co_await cityController->DoRun();
 
 		delete cityController;
 

@@ -1,11 +1,12 @@
 #include <algorithm>
 #include <GWCA/GWCA.h>
 #include <GWCA/Managers/AgentMgr.h>
+#include <GWCA/Managers/SkillbarMgr.h>
 
 #include "RunUtility.h"
 
 namespace gbr::Tank::Utilities {
-	concurrency::task<void> RunUtility::FollowWaypoints(std::vector<std::vector<GW::GamePos>>& waypoints) {
+	concurrency::task<bool> RunUtility::FollowWaypoints(std::vector<std::vector<GW::GamePos>>& waypoints, std::function<concurrency::task<bool>()> afterSleepCheck) {
 		auto playerPos = GW::Agents::GetPlayer()->pos;
 
 		auto closest = *std::min_element(waypoints.cbegin(), waypoints.cend(), [=](std::vector<GW::GamePos> listA, std::vector<GW::GamePos> listB) {
@@ -21,10 +22,10 @@ namespace gbr::Tank::Utilities {
 			return playerPos.SquaredDistanceTo(closestA) < playerPos.SquaredDistanceTo(closestB);
 		});
 
-		return FollowWaypoints(closest);
+		return co_await FollowWaypoints(closest, afterSleepCheck);
 	}
 
-	concurrency::task<void> RunUtility::FollowWaypoints(std::vector<GW::GamePos>& waypoints) {
+	concurrency::task<bool> RunUtility::FollowWaypoints(std::vector<GW::GamePos>& waypoints, std::function<concurrency::task<bool>()> afterSleepCheck) {
 		auto playerPos = GW::Agents::GetPlayer()->pos;
 
 		auto currentIterater = std::min_element(waypoints.cbegin(), waypoints.cend(), [=](GW::GamePos a, GW::GamePos b) {
@@ -37,11 +38,14 @@ namespace gbr::Tank::Utilities {
 			GW::Agents::Move(currentWaypoint);
 			while (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) > GW::Constants::Range::Adjacent) {
 				co_await Sleep(50);
+
+				if (afterSleepCheck && !co_await afterSleepCheck())
+					return false;
 			}
 		}
 	}
 
-	concurrency::task<void> FollowWaypointsWithoutStuck(std::vector<GW::GamePos>& waypoints) {
+	concurrency::task<bool> RunUtility::FollowWaypointsWithoutStuck(std::vector<GW::GamePos>& waypoints, std::function<concurrency::task<bool>()> afterSleepCheck, int stuckTimeout) {
 		auto playerPos = GW::Agents::GetPlayer()->pos;
 
 		auto currentIterater = std::min_element(waypoints.cbegin(), waypoints.cend(), [=](GW::GamePos a, GW::GamePos b) {
@@ -51,16 +55,26 @@ namespace gbr::Tank::Utilities {
 		for (; currentIterater < waypoints.cend(); currentIterater++) {
 			auto currentWaypoint = *currentIterater;
 
-			GW::Agents::Move(currentWaypoint);
-			auto stuckTick = GetTickCount() + 10000;
+			auto stuckTick = GetTickCount() + stuckTimeout;
 			while (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) > GW::Constants::Range::Adjacent) {
+				GW::Agents::Move(currentWaypoint);
 				co_await Sleep(50);
+				if (afterSleepCheck && !co_await afterSleepCheck())
+					return false;
 
 				if (GetTickCount() > stuckTick) {
 					// assume we are stuck, try to use hos to get unstuck
-					GW::SkillbarMgr::
+					GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Heart_of_Shadow);
+
+					co_await Sleep(150);
+					if (afterSleepCheck && !co_await afterSleepCheck())
+						return false;
+
+					stuckTick = GetTickCount() + 10000;
 				}
 			}
 		}
+
+		return true;
 	}
 }

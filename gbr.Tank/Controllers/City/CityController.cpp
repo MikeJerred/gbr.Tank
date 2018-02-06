@@ -16,23 +16,12 @@ namespace gbr::Tank::Controllers::City {
 	using LogUtility = Utilities::LogUtility;
 
 	CityController::CityController() {
-		_maintainEnchantsHookId = GW::GameThread::AddPermanentCall([=]() {
-			auto currentTick = GetTickCount();
-			static auto nextTick = 0;
-
-			if (currentTick > nextTick) {
-				CityController::MaintainEnchants();
-				nextTick = currentTick + 500;
-			}
-		});
 	}
 
 	CityController::~CityController() {
-		if (_maintainEnchantsHookId > 0)
-			GW::GameThread::RemovePermanentCall(_maintainEnchantsHookId);
 	}
 
-	concurrency::task<void> CityController::DoRun() {
+	concurrency::task<bool> CityController::DoRun() {
 		LogUtility::Log(L"Starting City");
 
 		// take quest
@@ -47,15 +36,23 @@ namespace gbr::Tank::Controllers::City {
 
 		while (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(GW::Agents::GetAgentByID(questSnakeId)->pos) > GW::Constants::SqrRange::Adjacent) {
 			co_await Sleep(500);
+
+			if (DeadCheck())
+				return false;
 		}
 
 		GW::Agents::Dialog(0x82EF01);
 
 		co_await Sleep(500);
 
-		// wait for bonds
+		if (DeadCheck())
+			return false;
 
-		// put up shroud and SF
+		if (!co_await WaitForBonds())
+			return false;
+
+		if (!co_await MaintainEnchants())
+			return false;
 
 		// waypoints for 1st ball
 
@@ -68,25 +65,89 @@ namespace gbr::Tank::Controllers::City {
 		// order spike
 
 		// order kill city wall
+
+		// do inside city
+
+		// kill jadoth
+
+		// order everyone to the chest
+
+		return true;
 	}
 
-	void CityController::MaintainEnchants() {
-		if (GW::Map::GetInstanceType() != GW::Constants::InstanceType::Explorable
-			|| GW::Skillbar::GetPlayerSkillbar().Casting > 0)
-			return;
+	concurrency::task<bool> CityController::WaitForBonds() {
+
+		auto pbondEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Protective_Bond);
+		auto lbondEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Life_Bond);
+		auto balthEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Balthazars_Spirit);
+
+		if (pbondEffect.SkillId == 0 || lbondEffect.SkillId == 0 || balthEffect.SkillId == 0) {
+			co_await Sleep(500);
+
+			if (DeadCheck())
+				return false;
+
+			// add checks to make sure bonder is in range
+			// cancel recall if needed, or order team to move
+		}
+	}
+
+	concurrency::task<bool> CityController::MaintainEnchants() {
+		while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+			co_await Sleep(50);
+
+			if (DeadCheck())
+				return false;
+		}
 
 		auto sfEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Shadow_Form);
 
+		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 10000) {
+			GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::I_Am_Unstoppable);
+			co_await Sleep(100);
+
+			if (DeadCheck())
+				return false;
+		}
+
 		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 2000) {
 			GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Shadow_Form);
-			return;
+			co_await Sleep(500);
+
+			if (DeadCheck())
+				return false;
+
+			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+				co_await Sleep(50);
+
+				if (DeadCheck())
+					return false;
+			}
 		}
 
 		auto shroudEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Shroud_of_Distress);
 
 		if (shroudEffect.SkillId == 0 || shroudEffect.GetTimeRemaining() < 2000) {
 			GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Shroud_of_Distress);
-			return;
+			co_await Sleep(500);
+
+			if (DeadCheck())
+				return false;
+
+			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+				co_await Sleep(50);
+
+				if (DeadCheck())
+					return false;
+			}
 		}
+
+		return true;
+	}
+
+	bool DeadCheck() {
+		auto player = GW::Agents::GetPlayer();
+
+		return !player || player->GetIsDead();
 	}
 }
