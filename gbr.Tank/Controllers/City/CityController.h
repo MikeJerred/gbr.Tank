@@ -9,8 +9,10 @@ namespace gbr::Tank::Controllers::City {
 		CityController();
 		~CityController();
 
-		concurrency::task<bool> DoRun();
-		concurrency::task<bool> MaintainEnchants();
-		concurrency::task<bool> WaitForBonds();
+		awaitable<void> DoRun();
+		static awaitable<void> MaintainEnchants();
+		awaitable<void> WaitForBonds();
+
+		static void CheckForFail();
 	};
 }

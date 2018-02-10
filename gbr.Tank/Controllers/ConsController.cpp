@@ -46,9 +46,9 @@ namespace gbr::Tank::Controllers {
 			shouldSleep = shouldSleep || UseConsumable(GW::Constants::ItemID::ConsArmor);
 		}
 
-		if (shouldSleep) {
-			sleepUntilTick = GetTickCount() + 5000;
-		}
+		sleepUntilTick = shouldSleep
+			? GetTickCount() + 5000
+			: GetTickCount() + 100;
 	}
 
 	bool ConsController::IsPartyAlive() {
@@ -76,7 +76,7 @@ namespace gbr::Tank::Controllers {
 			return false;
 
 		for (auto effect : playerEffects) {
-			if (effect.SkillId == skillId && effect.GetTimeRemaining() > 1000) {
+			if (effect.SkillId == skillId && effect.GetTimeRemaining() > 5000) {
 				return false;
 			}
 		}

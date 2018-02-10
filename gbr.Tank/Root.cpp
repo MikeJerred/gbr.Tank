@@ -45,7 +45,7 @@ namespace gbr::Tank {
 		//GW::GameThread::ToggleRenderHook();
 
 		while (!mustQuit) {
-			Sleep(250);
+			std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
 			if (GetAsyncKeyState(VK_END) & 1) {
 				//mustQuit = true;
@@ -53,7 +53,7 @@ namespace gbr::Tank {
 
 			if (GetAsyncKeyState(VK_HOME) & 1) {
 				GW::GameThread::ToggleRenderHook();
-				Sleep(2000);
+				std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 			}
 		}
 

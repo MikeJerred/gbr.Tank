@@ -1,54 +1,447 @@
 #pragma once
 
-#include <Windows.h>
-#include <experimental/resumable>
+#include <map>
+#include <list>
+#include <queue>
+#include <chrono>
+#include <string>
 #include <functional>
-#include <pplawait.h>
-#include <ppltasks.h>
+#include <unordered_set>
+#include <unordered_map>
 #include <vector>
+#include <experimental/resumable>
+#include <cassert>
+#include <Windows.h>
 
-namespace gbr::Tank {
-	struct Awaitable {
-	private:
-		std::function<bool(void)> _hasFinished;
-		std::experimental::coroutine_handle<void> _awaitingCoroutine;
-	public:
-		static std::vector<Awaitable*> Awaitables;
+using namespace std::experimental;
 
-		Awaitable(std::function<bool(void)> hasFinished) noexcept : _hasFinished(hasFinished) {
-		}
-
-		bool hasFinished() const {
-			return _hasFinished();
-		}
-
-		void complete() noexcept {
-			_awaitingCoroutine.resume();
-		}
-
-		bool await_ready() const noexcept {
-			return _hasFinished();
-		}
-
-		bool await_suspend(std::experimental::coroutine_handle<void> awaitingCoroutine) noexcept {
-			_awaitingCoroutine = awaitingCoroutine;
-			Awaitables.push_back(this);
-
-			return !_hasFinished();
-		}
-
-		void await_resume() noexcept {}
-
-		Awaitable operator co_await() const noexcept {
-			return *this;
+namespace std
+{
+	template<>
+	struct hash<coroutine_handle<>>
+	{
+		size_t operator()(const coroutine_handle<>& ch) const
+		{
+			return hash<void*>()(ch.address());
 		}
 	};
+}
 
-	static Awaitable Sleep(int millisecondsToSleep) {
-		auto tickToResumeAt = GetTickCount() + millisecondsToSleep;
+namespace gbr::Tank {
+	class executor
+	{
+	public:
+		static executor& singleton()
+		{
+			thread_local static executor s_singleton;
+			return s_singleton;
+		}
 
-		return Awaitable([=]() {
-			return GetTickCount() > tickToResumeAt;
-		});
+		void add_ready_coro(coroutine_handle<> coro)
+		{
+			_ready_coros.push(coro);
+		}
+
+		void add_timed_wait_coro(std::chrono::high_resolution_clock::time_point when, coroutine_handle<> coro)
+		{
+			auto r = _timed_wait_coros.emplace(when, std::pair<std::list<coroutine_handle<>>, std::unordered_map<coroutine_handle<>, std::list<coroutine_handle<>>::iterator>>{});
+			assert(r.first->second.first.size() == r.first->second.second.size());
+			r.first->second.first.emplace_back(coro); // NB: the same coroutine cannot be suspended multiple times!
+			r.first->second.second.emplace(coro, --r.first->second.first.end());
+			assert(r.first->second.first.size() == r.first->second.second.size());
+		}
+
+		void remove_timed_wait_coro(std::chrono::high_resolution_clock::time_point when, coroutine_handle<> coro)
+		{
+			auto it = _timed_wait_coros.find(when);
+			if (it != _timed_wait_coros.end())
+			{
+				assert(it->second.first.size() == it->second.second.size());
+				auto it2 = it->second.second.find(coro);
+				if (it2 != it->second.second.end())
+				{
+					it->second.first.erase(it2->second);
+					it->second.second.erase(it2);
+					assert(it->second.first.size() == it->second.second.size());
+				}
+				if (it->second.first.empty())
+				{
+					_timed_wait_coros.erase(it);
+				}
+			}
+		}
+
+		void increment_num_outstanding_coros()
+		{
+			++_num_outstanding_coros;
+		}
+
+		void decrement_num_outstanding_coros()
+		{
+			--_num_outstanding_coros;
+		}
+
+		bool tick()
+		{
+			if (!_ready_coros.empty() || !_timed_wait_coros.empty() || _num_outstanding_coros > 0)
+			{
+				if (!_ready_coros.empty())
+				{
+					auto coro = _ready_coros.front();
+					_ready_coros.pop();
+
+					coro.resume();
+				}
+
+				while (!_timed_wait_coros.empty())
+				{
+					auto it = _timed_wait_coros.begin();
+					if (std::chrono::high_resolution_clock::now() < it->first)
+						break;
+
+					for (auto& coro : it->second.first)
+					{
+						_ready_coros.push(coro);
+					}
+
+					_timed_wait_coros.erase(it);
+				}
+
+				return true;
+			}
+
+			return false;
+		}
+
+	private:
+		executor() = default;
+		~executor() = default;
+
+		std::queue<coroutine_handle<>> _ready_coros;
+		std::map<std::chrono::high_resolution_clock::time_point, std::pair<std::list<coroutine_handle<>>, std::unordered_map<coroutine_handle<>, std::list<coroutine_handle<>>::iterator>>> _timed_wait_coros;
+
+		int _num_outstanding_coros = 0;
+	};
+
+
+	template <typename T>
+	class awaitable
+	{
+	private:
+		class impl
+		{
+		public:
+			typedef std::shared_ptr<impl> ptr;
+
+			impl() = default;
+			impl(const impl&) = delete;
+			impl(impl&&) = delete;
+			impl& operator=(const impl&) = delete;
+			~impl() = default;
+
+			explicit impl(bool suspend) : _suspend(suspend) {}
+
+			explicit impl(std::chrono::high_resolution_clock::duration timeout) : _when(std::chrono::high_resolution_clock::now() + timeout) {}
+
+			template <typename X>
+			struct promise_type_base
+			{
+				X _value = X{};
+
+				void return_value(X&& value)
+				{
+					_value = std::move(value);
+				}
+			};
+
+			template <>
+			struct promise_type_base<void>
+			{
+				void return_void() {}
+			};
+
+			struct promise_type : promise_type_base<T>
+			{
+				awaitable get_return_object()
+				{
+					return awaitable{ *this };
+				}
+
+				auto initial_suspend()
+				{
+					// NB: we want the coroutine to run until the first actual suspension point, unless explicitly requested to suspend
+					return suspend_never{};
+				}
+
+				// NB: we need to enforce FIFO ordering
+				std::list<coroutine_handle<>> _awaiter_coros;
+
+				auto final_suspend()
+				{
+					if (!_awaiter_coros.empty())
+					{
+						for (auto coro : _awaiter_coros)
+						{
+							executor::singleton().add_ready_coro(coro);
+							executor::singleton().decrement_num_outstanding_coros();
+						}
+						_awaiter_coros.clear();
+					}
+					return suspend_always{}; // NB: if we want to access the return value in await_resume, we need to keep the current coroutine around, even though coro.done() is now true! 
+				}
+
+				std::exception_ptr _exp;
+				void set_exception(std::exception_ptr exp)
+				{
+					_exp = exp;
+				}
+			};
+
+			explicit impl(coroutine_handle<promise_type> coroutine) : _coroutine(coroutine) {}
+
+			bool await_ready() noexcept
+			{
+				// if I'm enclosing a coroutine, use its status; otherwise, suspend if not ready
+				return _coroutine ? _coroutine.done() : _when != std::chrono::high_resolution_clock::time_point{} ? std::chrono::high_resolution_clock::now() >= _when : _ready;
+			}
+
+			void await_suspend(coroutine_handle<> awaiter_coro) noexcept
+			{
+				if (!_coroutine)
+				{
+					// I'm not enclosing a coroutine while I'm awaited (await resumable_thing{};), add the awaiter's frame
+
+					if (_when != std::chrono::high_resolution_clock::time_point{})
+					{
+						if (std::chrono::high_resolution_clock::now() >= _when)
+						{
+							// the timer has already expired - but we should have guarded this situation in await_ready, so this should not happen
+							// however, if this does happen, we should just put the awaiter_coro into the ready queue
+							assert(false); // let's make sure this does not happen actually, but nevertheless, we add the awaiter_coro to the ready queue
+							executor::singleton().add_ready_coro(awaiter_coro);
+						}
+						else
+						{
+							_awaiter_coros.emplace_back(awaiter_coro); // NB: guarantee FIFO ordering of the awaiters ...
+							executor::singleton().add_timed_wait_coro(_when, awaiter_coro);
+						}
+					}
+					else if (_suspend)
+					{
+						_awaiter_coros.emplace_back(awaiter_coro); // NB: guarantee FIFO ordering of the awaiters ...
+						executor::singleton().increment_num_outstanding_coros();
+					}
+					else
+					{
+						executor::singleton().add_ready_coro(awaiter_coro);
+					}
+				}
+				else
+				{
+					// I'm waiting for some other coroutine to finish, the awaiter's frame can only be queued until my awaited one finishes
+					_coroutine.promise()._awaiter_coros.emplace_back(awaiter_coro); // NB: guarantee FIFO ordering of the awaiters ...
+					executor::singleton().increment_num_outstanding_coros();
+				}
+			}
+
+			template <typename X>
+			struct value
+			{
+				X _value = X{};
+				X& get() { return _value; }
+				X move() { return std::move(_value); }
+			};
+
+			template <>
+			struct value<void>
+			{
+				void get() {}
+				void move() {}
+			};
+
+			template <typename X>
+			struct save_promise_value
+			{
+				static void apply(value<X>& v, promise_type& p)
+				{
+					v._value = std::move(p._value);
+				}
+			};
+
+			template <>
+			struct save_promise_value<void>
+			{
+				static void apply(value<void>&, promise_type&)
+				{
+				}
+			};
+
+			T await_resume()
+			{
+				if (_coroutine)
+				{
+					if (_coroutine.promise()._exp)
+					{
+						_exp = _coroutine.promise()._exp;
+					}
+					else
+					{
+						save_promise_value<T>::apply(_value, _coroutine.promise());
+					}
+
+					// the coroutine is finished, but returned from final_suspend (suspend_always), so we get a chance to retrieve any exception or value
+					assert(_coroutine.done());
+					_coroutine.destroy();
+					_coroutine = nullptr;
+				}
+
+				_awaiter_coros.clear();
+				_when = std::chrono::high_resolution_clock::time_point{};
+
+				if (_exp)
+				{
+					std::rethrow_exception(_exp);
+				}
+
+				return _value.get();
+			}
+
+			void set_ready()
+			{
+				if (!_awaiter_coros.empty())
+				{
+					for (auto coro : _awaiter_coros)
+					{
+						executor::singleton().add_ready_coro(coro);
+						if (_suspend)
+						{
+							executor::singleton().decrement_num_outstanding_coros();
+						}
+						else
+						{
+							executor::singleton().remove_timed_wait_coro(_when, coro);
+						}
+					}
+
+					_awaiter_coros.clear();
+					_when = std::chrono::high_resolution_clock::time_point{};
+				}
+				_ready = true;
+			}
+
+			template <typename U = T, typename std::enable_if<!std::is_void<U>::value>::type* = nullptr>
+			void set_ready(U&& value)
+			{
+				_value._value = std::forward<U>(value);
+				set_ready();
+			}
+
+			void set_exception(std::exception_ptr exp)
+			{
+				_exp = exp;
+				set_ready();
+			}
+
+			value<T>& get_value()
+			{
+				return _value;
+			}
+
+		private:
+			value<T> _value;
+
+			std::exception_ptr _exp;
+
+			// the coroutine this awaitable is enclosing; this is created by promise_type::get_return_object
+			coroutine_handle<promise_type> _coroutine{ nullptr };
+
+			// the awaiter coroutine when this awaitable is a primitive - i.e. it doesn't enclose a coroutine, set only when _coroutine is nullptr!
+			std::list<coroutine_handle<>> _awaiter_coros;
+			std::chrono::high_resolution_clock::time_point _when; // NB: this should be initialized in the constructor, and cannot be modified 
+
+			bool _ready = false;
+			bool _suspend = false;
+		};
+
+
+		typename impl::ptr _impl_ptr;
+
+		explicit awaitable(typename impl::promise_type& promise)
+			: _impl_ptr(std::make_shared<impl>(coroutine_handle<typename impl::promise_type>::from_promise(promise)))
+		{
+		}
+	public:
+		struct promise_type : impl::promise_type
+		{
+		};
+
+		awaitable()
+			: _impl_ptr(std::make_shared<impl>())
+		{
+		}
+
+		explicit awaitable(bool suspend)
+			: _impl_ptr(std::make_shared<impl>(suspend))
+		{
+		}
+
+		explicit awaitable(std::chrono::high_resolution_clock::duration timeout)
+			: _impl_ptr(std::make_shared<impl>(timeout))
+		{
+		}
+
+		awaitable(awaitable const&) = default;
+		awaitable& operator=(awaitable const&) = default;
+		awaitable(awaitable&& other) = default;
+		~awaitable() = default;
+
+		bool operator==(const awaitable& other) const
+		{
+			return _impl_ptr == other._impl_ptr;
+		}
+
+		bool await_ready() noexcept
+		{
+			return _impl_ptr->await_ready();
+		}
+
+		void await_suspend(coroutine_handle<> awaiter_coro) noexcept
+		{
+			_impl_ptr->await_suspend(awaiter_coro);
+		}
+
+		T await_resume()
+		{
+			return _impl_ptr->await_resume();
+		}
+
+		void set_ready()
+		{
+			_impl_ptr->set_ready();
+		}
+
+		template <typename U = T, typename std::enable_if<!std::is_void<U>::value>::type* = nullptr>
+		void set_ready(U&& value)
+		{
+			_impl_ptr->set_ready(std::forward<U>(value));
+		}
+
+		void set_exception(std::exception_ptr exp)
+		{
+			_impl_ptr->set_exception(exp);
+		}
+
+		T get_value()
+		{
+			return _impl_ptr->get_value().get();
+		}
+
+
+	};
+
+
+
+	static awaitable<void> Sleep(int millisecondsToSleep) {
+		return awaitable<void>(std::chrono::milliseconds(millisecondsToSleep));
 	}
 }

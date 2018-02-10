@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Awaitable.h"
+#include "../Exceptions.h"
 #include "City/CityController.h"
 
 namespace gbr::Tank::Controllers {
@@ -8,7 +9,9 @@ namespace gbr::Tank::Controllers {
 	private:
 		DWORD _hookId;
 
-		static concurrency::task<void> DoRun();
+		static awaitable<void> Start();
+		static awaitable<void> DoRun();
+		static void ZonedCheck();
 	public:
 		RunController();
 		~RunController();

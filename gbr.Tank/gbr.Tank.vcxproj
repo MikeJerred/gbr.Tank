@@ -121,7 +121,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Awaitable.cpp" />
     <ClCompile Include="Controllers\City\CityController.cpp" />
     <ClCompile Include="Controllers\ConsController.cpp" />
     <ClCompile Include="Controllers\RunController.cpp" />
@@ -137,6 +136,7 @@
     <ClInclude Include="Controllers\City\CityController.h" />
     <ClInclude Include="Controllers\ConsController.h" />
     <ClInclude Include="Controllers\RunController.h" />
+    <ClInclude Include="Exceptions.h" />
     <ClInclude Include="Root.h" />
     <ClInclude Include="Utilities\AgentUtility.h" />
     <ClInclude Include="Utilities\LogUtility.h" />

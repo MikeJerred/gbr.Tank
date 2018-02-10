@@ -41,7 +41,6 @@
     <ClCompile Include="Utilities\RunUtility.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="Awaitable.cpp" />
     <ClCompile Include="Utilities\AgentUtility.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
@@ -70,5 +69,6 @@
     <ClInclude Include="Utilities\AgentUtility.h">
       <Filter>Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="Exceptions.h" />
   </ItemGroup>
 </Project>
