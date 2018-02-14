@@ -11,9 +11,9 @@ namespace gbr::Tank::Utilities {
 	private:
 	public:
 		static GW::Agent* FindAgent(float x, float y, float range, int modelId = 0);
-		static Ball GetBall(float x, float y) {
-			return Ball(x, y);
-		}
+		static std::vector<GW::Agent*> GetEnemiesInRange(float x, float y, float range);
+
+		static awaitable<void> WaitForSettle(std::function<awaitable<void>()> afterSleepCheck);
 	};
 
 
@@ -25,7 +25,7 @@ namespace gbr::Tank::Utilities {
 	public:
 		Ball(float x, float y);
 
-		DWORD GetCentralTarget();
+		GW::Agent* GetCentralTarget();
 	};
 
 

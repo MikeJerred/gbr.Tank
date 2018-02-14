@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <numeric>
 #include <GWCA/GWCA.h>
 #include <GWCA/Managers/AgentMgr.h>
 
@@ -20,8 +21,11 @@ namespace gbr::Tank::Utilities {
 		return nullptr;
 	}
 
-	Ball::Ball(float x, float y) : _agentIds() {
+	std::vector<GW::Agent*> AgentUtility::GetEnemiesInRange(float x, float y, float range) {
 		auto agentArray = GW::Agents::GetAgentArray();
+		const auto sqRange = range * range;
+
+		std::vector<GW::Agent*> results;
 
 		if (agentArray.valid()) {
 			for (auto agent : agentArray) {
@@ -32,33 +36,76 @@ namespace gbr::Tank::Utilities {
 					&& agent->PlayerNumber != GW::Constants::ModelID::QZ
 					&& agent->PlayerNumber != GW::Constants::ModelID::Winnowing
 					&& agent->Allegiance == 3
-					&& agent->pos.SquaredDistanceTo(GW::Vector2f(x, y)) < GW::Constants::SqrRange::Nearby) {
-					
-					_agentIds.push_back(agent->Id);
+					&& agent->pos.SquaredDistanceTo(GW::Vector2f(x, y)) < sqRange) {
+
+					results.push_back(agent);
+				}
+			}
+		}
+
+		return results;
+	}
+
+	awaitable<void> AgentUtility::WaitForSettle(std::function<awaitable<void>()> afterSleepCheck) {
+		bool settled = false;
+
+		while (!settled) {
+			co_await Sleep(50);
+			if (afterSleepCheck)
+				co_await afterSleepCheck();
+
+			settled = true;
+			auto playerPos = GW::Agents::GetPlayer()->pos;
+
+			for (auto agent : GW::Agents::GetAgentArray()) {
+				if (agent
+					&& agent->GetIsLivingType()
+					&& !agent->GetIsDead()
+					&& agent->Allegiance == 3
+					&& agent->pos.SquaredDistanceTo(playerPos) < 1500 * 1500
+					&& (agent->MoveX > 1 || agent->MoveY > 1)) {
+
+					settled = false;
+					break;
 				}
 			}
 		}
 	}
 
-	DWORD Ball::GetCentralTarget() {
+	Ball::Ball(float x, float y) : _agentIds() {
+		for (auto agent : AgentUtility::GetEnemiesInRange(x, y, GW::Constants::Range::Nearby)) {
+			_agentIds.push_back(agent->Id);
+		}
+	}
+
+	GW::Agent* Ball::GetCentralTarget() {
 		auto agentArray = GW::Agents::GetAgentArray();
 		auto playerPos = GW::Agents::GetPlayer()->pos;
 
-		std::
+		std::vector<GW::Agent*> validAgents;
 
-		if (agentArray.valid()) {
-			for (auto id : _agentIds) {
-				auto agent = agentArray[id];
+		for (auto id : _agentIds) {
+			auto agent = agentArray[id];
 
-				if (agent
-					&& !agent->GetIsDead()
-					&& ) {
-
-				}
-			}
+			if (agent && !agent->GetIsDead())
+				validAgents.push_back(agent);
 		}
 
-		return 0;
+		auto avgX = std::accumulate(validAgents.cbegin(), validAgents.cend(), 0.0f, [](float acc, GW::Agent* agent) {
+			return acc + agent->X;
+		}) / validAgents.size();
+
+		auto avgY = std::accumulate(validAgents.cbegin(), validAgents.cend(), 0.0f, [](float acc, GW::Agent* agent) {
+			return acc + agent->Y;
+		}) / validAgents.size();
+
+		auto avgPos = GW::Vector2f(avgX, avgY);
+
+		auto result = std::min_element(validAgents.begin(), validAgents.end(), [=](GW::Agent* a, GW::Agent* b) {
+			return a->pos.SquaredDistanceTo(avgPos) < b->pos.SquaredDistanceTo(avgPos);
+		});
+
+		return result != validAgents.end() ? *result : nullptr;
 	}
 
 

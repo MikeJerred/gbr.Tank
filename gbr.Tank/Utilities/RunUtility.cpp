@@ -59,7 +59,6 @@ namespace gbr::Tank::Utilities {
 		for (; currentIterater < waypoints.cend(); currentIterater++) {
 			auto currentWaypoint = *currentIterater;
 
-			auto stuckTick = GetTickCount() + stuckTimeout;
 			while (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) > GW::Constants::Range::Adjacent) {
 				GW::Agents::Move(currentWaypoint);
 
@@ -70,15 +69,25 @@ namespace gbr::Tank::Utilities {
 				if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Loading)
 					return;
 
-				if (GetTickCount() > stuckTick) {
-					// assume we are stuck, try to use hos to get unstuck
-					GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Heart_of_Shadow);
+				auto stuckTick = GetTickCount() + stuckTimeout;
+				while (GW::Agents::GetPlayer()->MoveX < 1.0f && GW::Agents::GetPlayer()->MoveY < 1.0f) {
+					// we have stopped moving
+					GW::Agents::Move(currentWaypoint);
 
-					co_await Sleep(150);
+					co_await Sleep(50);
 					if (afterSleepCheck)
 						co_await afterSleepCheck();
 
-					stuckTick = GetTickCount() + stuckTimeout;
+					if (GetTickCount() > stuckTick) {
+						// assume we are stuck, try to use hos to get unstuck
+						GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Heart_of_Shadow);
+
+						co_await Sleep(150);
+						if (afterSleepCheck)
+							co_await afterSleepCheck();
+
+						stuckTick = GetTickCount() + stuckTimeout;
+					}
 				}
 			}
 		}

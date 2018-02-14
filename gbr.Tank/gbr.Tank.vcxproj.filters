@@ -44,6 +44,9 @@
     <ClCompile Include="Utilities\AgentUtility.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="Utilities\TeamUtility.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Root.h" />
@@ -70,5 +73,8 @@
       <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="Exceptions.h" />
+    <ClInclude Include="Utilities\TeamUtility.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

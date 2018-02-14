@@ -2,16 +2,23 @@
 
 #include <vector>
 
+#include <GWCA/GWCA.h>
+#include <GWCA/GWStructures.h>
+
 namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
+		static std::vector<GW::GamePos> TeamWaypoints;
+		MargoAnalyzer* _margoAnalyzer;
 	public:
 		CityController();
 		~CityController();
 
-		awaitable<void> DoRun();
+		static awaitable<void> DoRun();
+		static awaitable<void> WaitForBonds();
+		static awaitable<void> Maintenence();
 		static awaitable<void> MaintainEnchants();
-		awaitable<void> WaitForBonds();
+		static bool KeepBonderInRange();
 
 		static void CheckForFail();
 	};

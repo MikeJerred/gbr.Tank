@@ -444,4 +444,13 @@ namespace gbr::Tank {
 	static awaitable<void> Sleep(int millisecondsToSleep) {
 		return awaitable<void>(std::chrono::milliseconds(millisecondsToSleep));
 	}
+
+	static awaitable<void> Sleep(int millisecondsToSleep, std::function<awaitable<void>()> afterSleepCheck) {
+		auto doneTick = GetTickCount() + millisecondsToSleep;
+
+		while (GetTickCount() < doneTick) {
+			co_await Sleep(50);
+			co_await afterSleepCheck();
+		}
+	}
 }
