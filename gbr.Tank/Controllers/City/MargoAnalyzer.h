@@ -44,12 +44,13 @@ namespace gbr::Tank::Controllers::City {
 			};
 
 			static const DWORD WanderingTime = 9000;
+			static const DWORD WaitingTime = 2000;
 			static const DWORD RunningTime = 5000;
 
 			std::vector<State> _states;
 			std::vector<DWORD> _agentIds;
 		public:
-			const static std::vector<std::vector<DWORD>> PossibleGroups;
+			const static std::vector<std::vector<int>> PossibleGroups;
 
 			MargoGroup(const std::vector<GW::Agent*>& agents);
 
@@ -68,7 +69,9 @@ namespace gbr::Tank::Controllers::City {
 		~MargoAnalyzer();
 
 		void Tick();
-		bool MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<DWORD> validModelIds);
+		bool MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<int> validModelIds);
 		bool AgentIsMargonite(GW::Agent* agent);
+
+		bool PlayerShouldWait();
 	};
 }

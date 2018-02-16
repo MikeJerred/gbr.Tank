@@ -2,6 +2,7 @@
 #include <thread>
 #include <GWCA/GWCA.h>
 #include <GWCA/Managers/AgentMgr.h>
+#include <GWCA/Managers/ChatMgr.h>
 #include <GWCA/Managers/GameThreadMgr.h>
 #include <GWCA/Managers/MapMgr.h>
 #include <GWCA/Managers/PartyMgr.h>
@@ -17,6 +18,14 @@ namespace gbr::Tank::Controllers {
 	RunController::RunController() {
 		_hookId = GW::GameThread::AddPermanentCall([]() {
 			executor::singleton().tick();
+
+			static int lastStuckCheck = 0;
+
+			if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Explorable && GetTickCount() > lastStuckCheck + 5000) {
+				lastStuckCheck = GetTickCount();
+
+				GW::Chat::SendChat("stuck", '/');
+			}
 		});
 		GW::GameThread::Enqueue([]() { RunController::Start(); });
 	}

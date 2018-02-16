@@ -11,7 +11,7 @@ namespace gbr::Tank::Controllers::City {
 	using AgentUtility = Utilities::AgentUtility;
 	using namespace GW::Constants::ModelID::DoA;
 
-	const std::vector<std::vector<DWORD>> MargoAnalyzer::MargoGroup::PossibleGroups{
+	const std::vector<std::vector<int>> MargoAnalyzer::MargoGroup::PossibleGroups{
 		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKi, MargoniteAnurRund, MargoniteAnurVu },
 		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKi, MargoniteAnurRund, MargoniteAnurTuk },
 		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKaya, MargoniteAnurSu, MargoniteAnurSu, MargoniteAnurTuk },
@@ -103,7 +103,7 @@ namespace gbr::Tank::Controllers::City {
 		}
 	}
 
-	bool MargoAnalyzer::MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<DWORD> validModelIds) {
+	bool MargoAnalyzer::MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<int> validModelIds) {
 		auto matched = std::vector<GW::Agent*>();
 
 		for (auto modelId : validModelIds) {
@@ -138,6 +138,16 @@ namespace gbr::Tank::Controllers::City {
 				|| agent->PlayerNumber == GW::Constants::ModelID::DoA::MargoniteAnurVu
 				);
 		// todo: exclude the enemies on the wall
+	}
+
+	bool MargoAnalyzer::PlayerShouldWait() {
+		for (auto group : _margoGroups) {
+			if (group->GetDistanceFromPlayer() < 1400 && group->GetTimeBeforeBall() < 2000) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 
@@ -223,169 +233,58 @@ namespace gbr::Tank::Controllers::City {
 		return sqrtf(agent->MoveX * agent->MoveX + agent->MoveY * agent->MoveY) / 288.0f;
 	}
 
+	DWORD MargoAnalyzer::MargoGroup::GetTimeBeforeBall() {
+		if (_states.size() == 0)
+			return 0;
 
-
-
-
-	void MargoAnalyzer::Margo::Update(GW::Agent* agent) {
-		auto speed = sqrtf(agent->MoveX * agent->MoveX + agent->MoveY * agent->MoveY) / 288.0f;
-
-		if (speed > 1.3f) {
-			if (_possibleStates.size() == 0) {
-				_possibleStates.push_back(State::Collapsing);
-				_possibleStates.push_back(State::Running);
-				return;
-			}
-			else if (_possibleStates.size() == 1) {
-				auto lastState = _possibleStates[0];
-
-				if (lastState == State::Wandering) {
-					if (_tickOfLastChange > WanderingTime) {
-
-					}
-
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Collapsing);
-					_tickOfLastChange = GetTickCount();
-				}
-				else if (lastState == State::Collapsed) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Running);
-					_tickOfLastChange = GetTickCount();
-				}
-				else if (lastState == State::WaitingToWander) {
-					// throw error
-				}
-
-				return;
-			}
-
-		}
-		else if (speed < 0.1f) {
-			if (_possibleStates.size() == 0) {
-				_possibleStates.push_back(State::Collapsing);
-				_possibleStates.push_back(State::Collapsed);
-				_possibleStates.push_back(State::WaitingToWander);
-				_possibleStates.push_back(State::Wandering);
-				return;
-			}
-			else if (_possibleStates.size() == 1) {
-			}
-
-
-		}
-		else {
-			if (_possibleStates.size() == 0) {
-				_possibleStates.push_back(State::Wandering);
-				return;
-			}
-			else if (_possibleStates.size() == 1) {
-			}
-
+		auto lastState = _states.back();
+		if ((lastState.state && StateType::Collapsed) || (lastState.state && StateType::Collapsing)) {
+			return 0;
 		}
 
-
-		if (_possibleStates.size() == 1) {
-			auto lastState = _possibleStates[0];
-
-			if (speed == 1.33) {
-				if (lastState == State::Wandering) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Collapsing);
-					_tickOfLastChange = GetTickCount();
-				}
-				else if (lastState == State::Collapsed) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Running);
-					_tickOfLastChange = GetTickCount();
-				}
-				else if (lastState == State::WaitingToWander) {
-					// throw error
-				}
-			}
-			else if (speed == 0) {
-				if (lastState == State::Collapsing) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Collapsed);
-					_tickOfLastChange = GetTickCount();
-				}
-				else if (lastState == State::Running) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::WaitingToWander);
-					_tickOfLastChange = GetTickCount();
-				}
-			}
-			else if (speed = 0.66) {
-				if (lastState == State::Collapsing) {
-					// throw error
-				}
-				else if (lastState == State::Collapsed) {
-					// throw error
-				}
-				else if (lastState == State::Running) {
-					// throw error
-				}
-				else if (lastState == State::WaitingToWander) {
-					_possibleStates.clear();
-					_possibleStates.push_back(State::Wandering);
-					_tickOfLastChange = GetTickCount();
-				}
-			}
-		}
-		else if (_possibleStates.size() == 2) {
-			if (speed == 0) {
-				_possibleStates.clear();
-				_possibleStates.push_back(State::Collapsed);
-				_possibleStates.push_back(State::WaitingToWander);
-				_tickOfLastChange = GetTickCount();
-			}
-			else if (speed = 0.66) {
-				_possibleStates.clear();
-				_possibleStates.push_back(State::Wandering);
-				_tickOfLastChange = GetTickCount();
-			}
-		}
-		else if (_possibleStates.size() == 3) {
-			if (speed == 1.33) {
-				_possibleStates.clear();
-				_possibleStates.push_back(State::Collapsing);
-				_possibleStates.push_back(State::Running);
-				_tickOfLastChange = GetTickCount();
-			}
-			else if (speed = 0.66) {
-				_possibleStates.clear();
-				_possibleStates.push_back(State::Wandering);
-				_tickOfLastChange = GetTickCount();
-			}
-		}
-	}
-
-	DWORD MargoAnalyzer::Margo::GetTimeBeforeBall() {
-		if (_possibleStates.size() == 1) {
-			auto lastState = _possibleStates[0];
-
-			if (lastState == State::Collapsed || lastState == State::Collapsing)
+		if (lastState.state && StateType::Wandering) {
+			if (_states.size() == 1) {
 				return 0;
-
-			if (lastState == State::Running) {
-				auto runningFor = (GetTickCount() - _tickOfLastChange);
-				return RunningTime - runningFor + WanderingTime;
 			}
+			else {
+				auto timeSpentWandering = GetTickCount() - lastState.tick;
 
-			if (lastState == State::WaitingToWander) {
+				return WanderingTime - timeSpentWandering;
+			}
+		}
+
+		if (lastState.state && StateType::WaitingToWander) {
+			if (_states.size() == 1) {
 				return WanderingTime;
 			}
+			else {
+				auto timeSpentWaiting = GetTickCount() - lastState.tick;
 
-			if (lastState == State::Wandering) {
-				auto wanderingFor = (GetTickCount() - _tickOfLastChange);
-				return WanderingTime - wanderingFor;
+				return WanderingTime + WaitingTime - timeSpentWaiting;
 			}
 		}
-		else if (_possibleStates.size() == 2) {
+		if (lastState.state && StateType::Running) {
+			if (_states.size() == 1) {
+				return WanderingTime + WaitingTime;
+			}
+			else {
+				auto timeSpentRunning = GetTickCount() - lastState.tick;
 
+				return WanderingTime + WaitingTime + RunningTime - timeSpentRunning;
+			}
 		}
 	}
 
+	float MargoAnalyzer::MargoGroup::GetDistanceFromPlayer() {
+		auto playerPos = GW::Agents::GetPlayer()->pos;
 
+		auto closestAgentId = *std::min_element(_agentIds.begin(), _agentIds.end(), [=](DWORD id1, DWORD id2) {
+			auto agent1 = GW::Agents::GetAgentByID(id1);
+			auto agent2 = GW::Agents::GetAgentByID(id2);
 
+			return agent1->pos.SquaredDistanceTo(playerPos) < agent2->pos.SquaredDistanceTo(playerPos);
+		});
+
+		return GW::Agents::GetAgentByID(closestAgentId)->pos.DistanceTo(playerPos);
+	}
 }

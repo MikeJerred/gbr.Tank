@@ -47,6 +47,9 @@
     <ClCompile Include="Utilities\TeamUtility.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="Controllers\City\MargoAnalyzer.cpp">
+      <Filter>Controllers\City</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Root.h" />
@@ -75,6 +78,9 @@
     <ClInclude Include="Exceptions.h" />
     <ClInclude Include="Utilities\TeamUtility.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="Controllers\City\MargoAnalyzer.h">
+      <Filter>Controllers\City</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

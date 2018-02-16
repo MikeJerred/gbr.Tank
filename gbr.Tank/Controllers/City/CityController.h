@@ -5,6 +5,8 @@
 #include <GWCA/GWCA.h>
 #include <GWCA/GWStructures.h>
 
+#include "MargoAnalyzer.h"
+
 namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
@@ -14,12 +16,12 @@ namespace gbr::Tank::Controllers::City {
 		CityController();
 		~CityController();
 
-		static awaitable<void> DoRun();
-		static awaitable<void> WaitForBonds();
-		static awaitable<void> Maintenence();
-		static awaitable<void> MaintainEnchants();
-		static bool KeepBonderInRange();
+		awaitable<void> DoRun();
+		awaitable<void> WaitForBonds();
+		awaitable<void> Maintenence();
+		awaitable<void> MaintainEnchants();
+		bool KeepBonderInRange();
 
-		static void CheckForFail();
+		void CheckForFail();
 	};
 }

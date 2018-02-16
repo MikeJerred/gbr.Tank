@@ -69,7 +69,7 @@ namespace gbr::Tank::Utilities {
 				if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Loading)
 					return;
 
-				auto stuckTick = GetTickCount() + stuckTimeout;
+				int stuckFor = 0;
 				while (GW::Agents::GetPlayer()->MoveX < 1.0f && GW::Agents::GetPlayer()->MoveY < 1.0f) {
 					// we have stopped moving
 					GW::Agents::Move(currentWaypoint);
@@ -78,7 +78,9 @@ namespace gbr::Tank::Utilities {
 					if (afterSleepCheck)
 						co_await afterSleepCheck();
 
-					if (GetTickCount() > stuckTick) {
+					stuckFor++;
+
+					if (stuckFor > 50) {
 						// assume we are stuck, try to use hos to get unstuck
 						GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Heart_of_Shadow);
 
@@ -86,7 +88,7 @@ namespace gbr::Tank::Utilities {
 						if (afterSleepCheck)
 							co_await afterSleepCheck();
 
-						stuckTick = GetTickCount() + stuckTimeout;
+						stuckFor = 0;
 					}
 				}
 			}

@@ -73,7 +73,7 @@ namespace gbr::Tank::Controllers {
 
 		auto playerEffects = agentEffects[0].Effects;
 		if (!playerEffects.valid())
-			return false;
+			return true;
 
 		for (auto effect : playerEffects) {
 			if (effect.SkillId == skillId && effect.GetTimeRemaining() > 5000) {

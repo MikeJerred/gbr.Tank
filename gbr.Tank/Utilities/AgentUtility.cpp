@@ -35,6 +35,8 @@ namespace gbr::Tank::Utilities {
 					&& agent->PlayerNumber != GW::Constants::ModelID::EoE
 					&& agent->PlayerNumber != GW::Constants::ModelID::QZ
 					&& agent->PlayerNumber != GW::Constants::ModelID::Winnowing
+					&& agent->PlayerNumber != GW::Constants::ModelID::Famine
+					&& agent->PlayerNumber != GW::Constants::ModelID::Quicksand
 					&& agent->Allegiance == 3
 					&& agent->pos.SquaredDistanceTo(GW::Vector2f(x, y)) < sqRange) {
 
