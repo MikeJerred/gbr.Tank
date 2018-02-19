@@ -39,6 +39,19 @@ namespace gbr::Tank::Controllers::City {
 		GW::GamePos(-5865, -11495)
 	};
 
+	std::vector<GW::GamePos> CityWallPositions {
+		GW::GamePos(-9826, -12092),
+		GW::GamePos(-8884, -11889),
+		GW::GamePos(-8173, -11730),
+		GW::GamePos(-7449, -11720),
+		GW::GamePos(-7131, -11688),
+		GW::GamePos(-5733, -11719),
+		GW::GamePos(-5402, -11672),
+		GW::GamePos(-4721, -11643),
+		GW::GamePos(-3957, -11686),
+		GW::GamePos(-3034, -11695)
+	};
+
 	CityController::CityController() {
 		_margoAnalyzer = new MargoAnalyzer();
 	}
@@ -245,6 +258,28 @@ namespace gbr::Tank::Controllers::City {
 			while (_margoAnalyzer->PlayerShouldWait()) {
 				co_await Sleep(100);
 				co_await MaintainEnchants();
+				co_await SpikeCityWall();
+			}
+		}
+
+		co_await SpikeCityWall();
+
+		if (GW::Agents::GetPlayer()->HP * GW::Agents::GetPlayer()->MaxHP < 150)
+			TeamUtility::Seed();
+	}
+
+	awaitable<void> CityController::SpikeCityWall() {
+		auto teamPos = TeamUtility::GetMesmer()->pos;
+
+		for (auto cityWallPos : CityWallPositions) {
+			if (cityWallPos.SquaredDistanceTo(teamPos) < GW::Constants::SqrRange::Spellcast) {
+				auto enemies = AgentUtility::GetEnemiesInRange(cityWallPos.x, cityWallPos.y, GW::Constants::Range::Adjacent);
+
+				if (enemies.size() == 0)
+					continue;
+
+				TeamUtility::Spike(enemies[0]->Id, nullptr);
+				co_return;
 			}
 		}
 	}

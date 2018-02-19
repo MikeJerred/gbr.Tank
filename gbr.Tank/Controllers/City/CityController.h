@@ -11,6 +11,7 @@ namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
 		static std::vector<GW::GamePos> TeamWaypoints;
+		static std::vector<GW::GamePos> CityWallPositions;
 		MargoAnalyzer* _margoAnalyzer;
 	public:
 		CityController();
@@ -19,6 +20,7 @@ namespace gbr::Tank::Controllers::City {
 		awaitable<void> DoRun();
 		awaitable<void> WaitForBonds();
 		awaitable<void> Maintenence();
+		awaitable<void> SpikeCityWall();
 		awaitable<void> MaintainEnchants();
 		bool KeepBonderInRange();
 

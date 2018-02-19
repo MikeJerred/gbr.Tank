@@ -49,12 +49,14 @@ namespace gbr::Tank::Controllers::City {
 
 			std::vector<State> _states;
 			std::vector<DWORD> _agentIds;
+			bool _isAggroed;
 		public:
 			const static std::vector<std::vector<int>> PossibleGroups;
 
 			MargoGroup(const std::vector<GW::Agent*>& agents);
 
 			bool StillExists();
+			bool IsAggroed();
 			void Update();
 			bool ContainsAgent(DWORD agentId);
 			static float GetSpeed(DWORD agentId);

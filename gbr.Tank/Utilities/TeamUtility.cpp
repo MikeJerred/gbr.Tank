@@ -8,6 +8,7 @@
 #include <gbr.Shared/Commands/InteractAgent.h>
 #include <gbr.Shared/Commands/MoveTo.h>
 #include <gbr.Shared/Commands/PlaceSpirit.h>
+#include <gbr.Shared/Commands/Seed.h>
 
 #include "TeamUtility.h"
 #include "AgentUtility.h"
@@ -20,6 +21,11 @@ namespace gbr::Tank::Utilities {
 		request.y = y;
 		request.zPlane = 0;
 
+		gbr::Shared::Clients::SingletonNamedPipeClient::Send(request);
+	}
+
+	void TeamUtility::Seed() {
+		gbr::Shared::Commands::Seed::Request request;
 		gbr::Shared::Clients::SingletonNamedPipeClient::Send(request);
 	}
 
@@ -46,7 +52,7 @@ namespace gbr::Tank::Utilities {
 
 			gbr::Shared::Clients::SingletonNamedPipeClient::Send(request);
 
-			co_await Sleep(250);
+			co_await Sleep(50);
 			if (afterSleepCheck)
 				co_await afterSleepCheck();
 		}
@@ -76,6 +82,18 @@ namespace gbr::Tank::Utilities {
 			auto agent = GW::Agents::GetAgentByID(agentId);
 
 			if (agent && agent->Primary == (BYTE)GW::Constants::Profession::Elementalist)
+				return agent;
+		}
+
+		return nullptr;
+	}
+
+	GW::Agent* TeamUtility::GetMesmer() {
+		for (auto player : GW::PartyMgr::GetPartyInfo()->players) {
+			auto agentId = GW::Agents::GetAgentIdByLoginNumber(player.loginnumber);
+			auto agent = GW::Agents::GetAgentByID(agentId);
+
+			if (agent && agent->Primary == (BYTE)GW::Constants::Profession::Mesmer)
 				return agent;
 		}
 

@@ -31,9 +31,8 @@ namespace gbr::Tank::Controllers::City {
 	MargoAnalyzer::~MargoAnalyzer() {
 		GW::GameThread::RemovePermanentCall(_hookId);
 
-		for (auto margoGroup : _margoGroups) {
+		for (auto margoGroup : _margoGroups)
 			delete margoGroup;
-		}
 	}
 
 	void MargoAnalyzer::Tick() {
@@ -142,7 +141,7 @@ namespace gbr::Tank::Controllers::City {
 
 	bool MargoAnalyzer::PlayerShouldWait() {
 		for (auto group : _margoGroups) {
-			if (group->GetDistanceFromPlayer() < 1400 && group->GetTimeBeforeBall() < 2000) {
+			if (!group->IsAggroed() && group->GetDistanceFromPlayer() < 1400 && group->GetTimeBeforeBall() < 2000) {
 				return true;
 			}
 		}
@@ -156,28 +155,44 @@ namespace gbr::Tank::Controllers::City {
 	struct enable_bitmask_operators<MargoAnalyzer::MargoGroup::StateType> { static constexpr bool enable = true; };
 
 	MargoAnalyzer::MargoGroup::MargoGroup(const std::vector<GW::Agent*>& agents) : _states(), _agentIds() {
+		_isAggroed = false;
+
 		for (auto agent : agents)
 			_agentIds.push_back(agent->Id);
 	}
 
 	bool MargoAnalyzer::MargoGroup::StillExists() {
-		return std::all_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+		return std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
 			auto agent = GW::Agents::GetAgentByID(id);
 
-			return agent && !agent->GetIsDead() && agent->pos.SquaredDistanceTo(GW::Agents::GetPlayer()->pos) > GW::Constants::SqrRange::Earshot;
+			return agent && !agent->GetIsDead();
 		});
+	}
+
+	bool MargoAnalyzer::MargoGroup::IsAggroed() {
+		if (_isAggroed) {
+			_isAggroed = std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+				auto agent = GW::Agents::GetAgentByID(id);
+				return agent && !agent->GetIsDead() && agent->pos.SquaredDistanceTo(GW::Agents::GetPlayer()->pos) < 1800 * 1800;
+			});
+		}
+		else {
+			_isAggroed = std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+				auto agent = GW::Agents::GetAgentByID(id);
+				return agent && !agent->GetIsDead() && agent->pos.SquaredDistanceTo(GW::Agents::GetPlayer()->pos) < GW::Constants::SqrRange::Earshot;
+			});
+		}
+
+		return _isAggroed;
 	}
 
 	void MargoAnalyzer::MargoGroup::Update() {
 
-		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
-			auto speed = GetSpeed(id);
-			return speed < 1.3f && speed > 0.1f;
-		})) {
-
-			_states.push_back(State(StateType::Wandering, GetTickCount()));
-			return;
-		}
+		// remove any dead agents
+		std::remove_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+			auto agent = GW::Agents::GetAgentByID(id);
+			return !agent || agent->GetIsDead();
+		});
 
 		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) > 1.3f; })) {
 
@@ -187,6 +202,9 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
+			if ((lastState.state && StateType::Running) || (lastState.state && StateType::Collapsing))
+				return;
+
 			if (!(lastState.state && StateType::Wandering)) {
 				_states.push_back(State(StateType::Running, GetTickCount()));
 				return;
@@ -200,6 +218,23 @@ namespace gbr::Tank::Controllers::City {
 			return;
 		}
 
+		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+			auto speed = GetSpeed(id);
+			return speed < 1.3f && speed > 0.1f;
+		})) {
+
+			if (_states.size() == 0) {
+				_states.push_back(State(StateType::Wandering, GetTickCount()));
+			}
+
+			auto lastState = _states.back();
+			if (lastState.state && StateType::Wandering)
+				return;
+
+			_states.push_back(State(StateType::Wandering, GetTickCount()));
+			return;
+		}
+
 		if (std::all_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) < 0.1f; })) {
 
 			if (_states.size() == 0) {
@@ -208,6 +243,9 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
+			if ((lastState.state && StateType::Collapsed) || (lastState.state && StateType::WaitingToWander))
+				return;
+
 			if (!(lastState.state && StateType::Running)) {
 				_states.push_back(State(StateType::Collapsed, GetTickCount()));
 				return;
@@ -220,8 +258,6 @@ namespace gbr::Tank::Controllers::City {
 			_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander, GetTickCount()));
 			return;
 		}
-
-
 	}
 
 	bool MargoAnalyzer::MargoGroup::ContainsAgent(DWORD agentId) {
