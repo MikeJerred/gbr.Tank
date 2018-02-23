@@ -122,6 +122,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Controllers\City\CityController.cpp" />
+    <ClCompile Include="Controllers\City\CityWallAnalyzer.cpp" />
     <ClCompile Include="Controllers\City\MargoAnalyzer.cpp" />
     <ClCompile Include="Controllers\ConsController.cpp" />
     <ClCompile Include="Controllers\RunController.cpp" />
@@ -129,6 +130,7 @@
     <ClCompile Include="Root.cpp" />
     <ClCompile Include="Utilities\AgentUtility.cpp" />
     <ClCompile Include="Utilities\LogUtility.cpp" />
+    <ClCompile Include="Utilities\Pathing\PathSearch.cpp" />
     <ClCompile Include="Utilities\RunUtility.cpp" />
     <ClCompile Include="Utilities\SkillUtility.cpp" />
     <ClCompile Include="Utilities\TeamUtility.cpp" />
@@ -136,6 +138,7 @@
   <ItemGroup>
     <ClInclude Include="Awaitable.h" />
     <ClInclude Include="Controllers\City\CityController.h" />
+    <ClInclude Include="Controllers\City\CityWallAnalyzer.h" />
     <ClInclude Include="Controllers\City\MargoAnalyzer.h" />
     <ClInclude Include="Controllers\ConsController.h" />
     <ClInclude Include="Controllers\RunController.h" />
@@ -143,6 +146,7 @@
     <ClInclude Include="Root.h" />
     <ClInclude Include="Utilities\AgentUtility.h" />
     <ClInclude Include="Utilities\LogUtility.h" />
+    <ClInclude Include="Utilities\Pathing\PathSearch.h" />
     <ClInclude Include="Utilities\RunUtility.h" />
     <ClInclude Include="Utilities\SkillUtility.h" />
     <ClInclude Include="Utilities\TeamUtility.h" />

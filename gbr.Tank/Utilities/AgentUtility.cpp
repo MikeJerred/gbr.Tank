@@ -30,7 +30,7 @@ namespace gbr::Tank::Utilities {
 		if (agentArray.valid()) {
 			for (auto agent : agentArray) {
 				if (agent
-					&& agent->GetIsLivingType()
+					&& agent->GetIsCharacterType()
 					&& !agent->GetIsDead()
 					&& agent->PlayerNumber != GW::Constants::ModelID::EoE
 					&& agent->PlayerNumber != GW::Constants::ModelID::QZ
@@ -61,7 +61,7 @@ namespace gbr::Tank::Utilities {
 
 			for (auto agent : GW::Agents::GetAgentArray()) {
 				if (agent
-					&& agent->GetIsLivingType()
+					&& agent->GetIsCharacterType()
 					&& !agent->GetIsDead()
 					&& agent->Allegiance == 3
 					&& agent->pos.SquaredDistanceTo(playerPos) < 1500 * 1500

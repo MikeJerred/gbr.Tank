@@ -5,13 +5,15 @@
 #include <GWCA/GWCA.h>
 #include <GWCA/GWStructures.h>
 
+#include "CityWallAnalyzer.h"
 #include "MargoAnalyzer.h"
 
 namespace gbr::Tank::Controllers::City {
 	class CityController {
 	private:
-		static std::vector<GW::GamePos> TeamWaypoints;
-		static std::vector<GW::GamePos> CityWallPositions;
+		static const std::vector<GW::GamePos> TeamWaypoints;
+		static const std::vector<GW::GamePos> CityWallPositions;
+		CityWallAnalyzer* _cityWallAnalyzer;
 		MargoAnalyzer* _margoAnalyzer;
 	public:
 		CityController();

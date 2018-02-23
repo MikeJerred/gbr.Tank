@@ -1,5 +1,6 @@
 #include <GWCA/GWCA.h>
 #include <GWCA/Managers/AgentMgr.h>
+#include <GWCA/Managers/ChatMgr.h>
 #include <GWCA/Managers/GameThreadMgr.h>
 
 #include "Root.h"
@@ -39,6 +40,8 @@ namespace gbr::Tank {
 			MessageBoxA(0, "Failed to load GWCA.", "gbr Error", 0);
 			FreeLibraryAndExitThread(hModule, EXIT_SUCCESS);
 		}
+
+		GW::Chat::Initialize();
 
 		instance = new Root(hModule);
 

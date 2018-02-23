@@ -19,6 +19,9 @@
     <Filter Include="Controllers\Gloom">
       <UniqueIdentifier>{78110dcc-03b3-4792-90d4-65d19b6a710b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Utilities\Pathing">
+      <UniqueIdentifier>{9bc19821-b153-4886-8490-624fc0622e22}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -49,6 +52,12 @@
     </ClCompile>
     <ClCompile Include="Controllers\City\MargoAnalyzer.cpp">
       <Filter>Controllers\City</Filter>
+    </ClCompile>
+    <ClCompile Include="Controllers\City\CityWallAnalyzer.cpp">
+      <Filter>Controllers\City</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities\Pathing\PathSearch.cpp">
+      <Filter>Utilities\Pathing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +90,12 @@
     </ClInclude>
     <ClInclude Include="Controllers\City\MargoAnalyzer.h">
       <Filter>Controllers\City</Filter>
+    </ClInclude>
+    <ClInclude Include="Controllers\City\CityWallAnalyzer.h">
+      <Filter>Controllers\City</Filter>
+    </ClInclude>
+    <ClInclude Include="Utilities\Pathing\PathSearch.h">
+      <Filter>Utilities\Pathing</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

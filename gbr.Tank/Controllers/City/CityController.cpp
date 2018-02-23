@@ -23,7 +23,7 @@ namespace gbr::Tank::Controllers::City {
 	using SkillUtility = Utilities::SkillUtility;
 	using TeamUtility = Utilities::TeamUtility;
 
-	std::vector<GW::GamePos> CityController::TeamWaypoints {
+	const std::vector<GW::GamePos> CityController::TeamWaypoints {
 		GW::GamePos(-16700, -9805),
 		GW::GamePos(-15605, -10391),
 		GW::GamePos(-15232, -11460),
@@ -39,7 +39,7 @@ namespace gbr::Tank::Controllers::City {
 		GW::GamePos(-5865, -11495)
 	};
 
-	std::vector<GW::GamePos> CityWallPositions {
+	const std::vector<GW::GamePos> CityController::CityWallPositions {
 		GW::GamePos(-9826, -12092),
 		GW::GamePos(-8884, -11889),
 		GW::GamePos(-8173, -11730),
@@ -53,10 +53,14 @@ namespace gbr::Tank::Controllers::City {
 	};
 
 	CityController::CityController() {
+		_cityWallAnalyzer = new CityWallAnalyzer();
 		_margoAnalyzer = new MargoAnalyzer();
 	}
 
 	CityController::~CityController() {
+		if (_cityWallAnalyzer)
+			delete _cityWallAnalyzer;
+
 		if (_margoAnalyzer)
 			delete _margoAnalyzer;
 	}
@@ -89,7 +93,7 @@ namespace gbr::Tank::Controllers::City {
 		CheckForFail();
 
 		LogUtility::Log(L"Waiting for bonds");
-		co_await WaitForBonds();
+		//co_await WaitForBonds();
 
 		co_await MaintainEnchants();
 
@@ -97,13 +101,18 @@ namespace gbr::Tank::Controllers::City {
 		LogUtility::Log(L"Starting 1st ball");
 		co_await RunUtility::FollowWaypointsWithoutStuck(
 			std::vector<GW::GamePos> {
-				GW::GamePos(-15565.0f, -9515.0f),
-				GW::GamePos(-13999.0f, -10830.0f),
-				GW::GamePos(-12017.0f, -11611.0f),
-				GW::GamePos(-11232, -11420),
+				GW::GamePos(-16633, -9583),
+				GW::GamePos(-15973, -9520),
+				GW::GamePos(-15287, -9644),
+				GW::GamePos(-14644, -9903),
+				GW::GamePos(-14265, -10549),
+				GW::GamePos(-13723, -10843),
+				GW::GamePos(-13038, -10688),
+				GW::GamePos(-12479, -10946),
+				GW::GamePos(-11928, -11134),
+				GW::GamePos(-11439, -11083),
+				GW::GamePos(-11059, -10646),
 				GW::GamePos(-10881, -10500)
-
-				//GW::GamePos(-10850, -10918)
 			},
 			[=]() { return Maintenence(); },
 			5000);
@@ -113,8 +122,12 @@ namespace gbr::Tank::Controllers::City {
 
 		co_await RunUtility::FollowWaypointsWithoutStuck(
 			std::vector<GW::GamePos> {
-				GW::GamePos(-10858, -11077),
-				GW::GamePos(-11720, -11568),
+				GW::GamePos(-10762, -10760),
+				GW::GamePos(-10872, -11217),
+				GW::GamePos(-11425, -11497),
+				GW::GamePos(-12030, -11219),
+				GW::GamePos(-12371, -10889),
+				GW::GamePos(-12347, -10428),
 				GW::GamePos(-12336, -10051)
 			},
 			[=]() { return Maintenence(); },
@@ -211,8 +224,29 @@ namespace gbr::Tank::Controllers::City {
 		LogUtility::Log(L"Cleaning up");
 		co_await TeamUtility::CleanupEnemies(GW::Agents::GetPlayer()->X, GW::Agents::GetPlayer()->Y, [=]() { return Maintenence(); });
 
+		// run to gate
+		co_await RunUtility::FollowWaypointsWithoutStuck(
+			std::vector<GW::GamePos> { GW::GamePos(-6423, -11595) },
+			[=]() { return Maintenence(); },
+			5000);
 
 		// order kill city wall
+		while (!_cityWallAnalyzer->IsWallDead()) {
+			auto enemy = _cityWallAnalyzer->GetNextWallEnemy();
+
+			if (enemy) {
+				auto agent = AgentUtility::FindAgent(enemy->position.x, enemy->position.y, GW::Constants::Range::Adjacent);
+				if (agent) {
+					auto mesmer = TeamUtility::GetMesmer();
+					if (mesmer && mesmer->pos.SquaredDistanceTo(agent->pos) < GW::Constants::SqrRange::Spellcast) {
+						co_await TeamUtility::Spike(agent->Id, [=]() { return Maintenence(); });
+						continue;
+					}
+				}
+
+				TeamUtility::Move(enemy->killPosition.x, enemy->killPosition.y);
+			}
+		}
 
 		// do inside city
 
@@ -252,6 +286,7 @@ namespace gbr::Tank::Controllers::City {
 		}
 
 		if (_margoAnalyzer->PlayerShouldWait()) {
+			LogUtility::Log(L"Waiting for balled group");
 			// stop moving
 			GW::Agents::Move(GW::Agents::GetPlayer()->pos);
 
@@ -259,17 +294,30 @@ namespace gbr::Tank::Controllers::City {
 				co_await Sleep(100);
 				co_await MaintainEnchants();
 				co_await SpikeCityWall();
+
+				if ((GW::Agents::GetPlayer()->HP * GW::Agents::GetPlayer()->MaxHP) < 120) {
+					LogUtility::Log(L"Requesting seed");
+					TeamUtility::Seed();
+					co_await Sleep(100);
+				}
 			}
 		}
 
 		co_await SpikeCityWall();
 
-		if (GW::Agents::GetPlayer()->HP * GW::Agents::GetPlayer()->MaxHP < 150)
+		if ((GW::Agents::GetPlayer()->HP * GW::Agents::GetPlayer()->MaxHP) < 120) {
+			LogUtility::Log(L"Requesting seed");
 			TeamUtility::Seed();
+			co_await Sleep(100);
+		}
 	}
 
 	awaitable<void> CityController::SpikeCityWall() {
-		auto teamPos = TeamUtility::GetMesmer()->pos;
+		auto mesmer = TeamUtility::GetMesmer();
+		if (!mesmer)
+			co_return;
+
+		auto teamPos = mesmer->pos;
 
 		for (auto cityWallPos : CityWallPositions) {
 			if (cityWallPos.SquaredDistanceTo(teamPos) < GW::Constants::SqrRange::Spellcast) {
@@ -286,7 +334,7 @@ namespace gbr::Tank::Controllers::City {
 
 	awaitable<void> CityController::MaintainEnchants() {
 		while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
-			co_await Sleep(50);
+			co_await Sleep(100);
 			CheckForFail();
 		}
 
@@ -300,35 +348,38 @@ namespace gbr::Tank::Controllers::City {
 			}
 		}
 
-		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 2000) {
-			SkillUtility::TryUseSkill(GW::Constants::SkillID::Deadly_Paradox, 0);
+		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 3000) {
+			auto qz = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Quickening_Zephyr);
+			if (qz.SkillId == 0 || qz.GetTimeRemaining() < 3000) {
+				SkillUtility::TryUseSkill(GW::Constants::SkillID::Deadly_Paradox, 0);
+			}
+
 			SkillUtility::TryUseSkill(GW::Constants::SkillID::Shadow_Form, 0);
-			co_await Sleep(200);
+			co_await Sleep(500);
 			CheckForFail();
 
 			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
-				co_await Sleep(50);
+				co_await Sleep(100);
 				CheckForFail();
 			}
 		}
 
 		auto shroudEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Shroud_of_Distress);
 
-		if (shroudEffect.SkillId == 0 || shroudEffect.GetTimeRemaining() < 2000) {
+		if (shroudEffect.SkillId == 0 || shroudEffect.GetTimeRemaining() < 3000) {
 			SkillUtility::TryUseSkill(GW::Constants::SkillID::Shroud_of_Distress, 0);
 
-			co_await Sleep(200);
+			co_await Sleep(500);
 			CheckForFail();
 
 			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
-				co_await Sleep(50);
+				co_await Sleep(100);
 				CheckForFail();
 			}
 		}
 
 		if (GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Quickening_Zephyr).SkillId > 0) {
 			if (SkillUtility::TryUseSkill(GW::Constants::SkillID::I_Am_Unstoppable, 0)) {
-
 				co_await Sleep(100);
 				CheckForFail();
 			}
@@ -339,6 +390,9 @@ namespace gbr::Tank::Controllers::City {
 	bool CityController::KeepBonderInRange() {
 
 		auto bonder = TeamUtility::GetBonder();
+		if (!bonder)
+			return true;
+
 		auto distance = bonder->pos.DistanceTo(GW::Agents::GetPlayer()->pos);
 
 		if (distance > 4000) {

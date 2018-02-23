@@ -4,6 +4,7 @@
 #include <GWCA/Managers/MapMgr.h>
 #include <GWCA/Managers/SkillbarMgr.h>
 
+#include "Pathing/PathSearch.h"
 #include "RunUtility.h"
 
 namespace gbr::Tank::Utilities {
@@ -56,37 +57,42 @@ namespace gbr::Tank::Utilities {
 			return playerPos.SquaredDistanceTo(a) < playerPos.SquaredDistanceTo(b);
 		});
 
+		static const int sqRange = 200 * 200;
+
 		for (; currentIterater < waypoints.cend(); currentIterater++) {
 			auto currentWaypoint = *currentIterater;
 
-			while (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) > 50) {
-				GW::Agents::Move(currentWaypoint);
+			while (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(currentWaypoint) > sqRange) {
+				auto pointToGoTo = Pathing::PathSearch::FindNextBestWaypoint(currentWaypoint);
+				GW::Agents::Move(pointToGoTo);
+				//GW::Agents::Move(currentWaypoint);
 
-				co_await Sleep(50);
+				co_await Sleep(100);
 				if (afterSleepCheck)
 					co_await afterSleepCheck();
 
 				if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Loading)
 					return;
 
-				if (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) <= 50)
+				if (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(currentWaypoint) <= sqRange)
 					break;
 
 				int stuckFor = 0;
 				while (GW::Agents::GetPlayer()->MoveX < 1.0f && GW::Agents::GetPlayer()->MoveY < 1.0f) {
 					// we have stopped moving
-					GW::Agents::Move(currentWaypoint);
+					GW::Agents::Move(Pathing::PathSearch::FindNextBestWaypoint(currentWaypoint));
+					//GW::Agents::Move(currentWaypoint);
 
 					co_await Sleep(50);
 					if (afterSleepCheck)
 						co_await afterSleepCheck();
 
-					if (GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) <= 50)
+					if (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(currentWaypoint) <= sqRange)
 						break;
 
 					stuckFor++;
 
-					if (stuckFor > 100) {
+					if (stuckFor > 50) {
 						// assume we are stuck, try to use hos to get unstuck
 						GW::SkillbarMgr::UseSkillByID((DWORD)GW::Constants::SkillID::Heart_of_Shadow);
 

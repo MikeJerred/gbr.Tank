@@ -19,9 +19,9 @@ namespace gbr::Tank::Controllers::City {
 	}
 
 	template<typename E>
-	bool operator&&(E lhs, E rhs) {
+	bool operator&(E lhs, E rhs) {
 		typedef typename std::underlying_type<E>::type underlying;
-		return static_cast<underlying>(lhs) && static_cast<underlying>(rhs);
+		return static_cast<underlying>(lhs) & static_cast<underlying>(rhs);
 	}
 
 	class MargoAnalyzer {
@@ -71,7 +71,7 @@ namespace gbr::Tank::Controllers::City {
 		~MargoAnalyzer();
 
 		void Tick();
-		bool MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<int> validModelIds);
+		bool MatchesGroup(const std::vector<GW::Agent*>& potentialBall, const std::vector<int>& validModelIds);
 		bool AgentIsMargonite(GW::Agent* agent);
 
 		bool PlayerShouldWait();

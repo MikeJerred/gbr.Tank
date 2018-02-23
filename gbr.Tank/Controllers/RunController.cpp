@@ -24,7 +24,7 @@ namespace gbr::Tank::Controllers {
 			if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Explorable && GetTickCount() > lastStuckCheck + 5000) {
 				lastStuckCheck = GetTickCount();
 
-				GW::Chat::SendChat("stuck", '/');
+				GW::Chat::SendChat('/', L"stuck");
 			}
 		});
 		GW::GameThread::Enqueue([]() { RunController::Start(); });

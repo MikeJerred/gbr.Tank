@@ -11,10 +11,10 @@ namespace gbr::Tank::Controllers::City {
 	using AgentUtility = Utilities::AgentUtility;
 	using namespace GW::Constants::ModelID::DoA;
 
-	const std::vector<std::vector<int>> MargoAnalyzer::MargoGroup::PossibleGroups{
+	const std::vector<std::vector<int>> MargoAnalyzer::MargoGroup::PossibleGroups {
+		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKaya, MargoniteAnurSu, MargoniteAnurSu, MargoniteAnurTuk },
 		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKi, MargoniteAnurRund, MargoniteAnurVu },
 		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKi, MargoniteAnurRund, MargoniteAnurTuk },
-		{ MargoniteAnurDabi, MargoniteAnurDabi, MargoniteAnurKaya, MargoniteAnurSu, MargoniteAnurSu, MargoniteAnurTuk },
 		{ MargoniteAnurDabi, MargoniteAnurRuk, MargoniteAnurRuk, MargoniteAnurRund, MargoniteAnurVu },
 		{ MargoniteAnurDabi, MargoniteAnurRuk, MargoniteAnurRuk, MargoniteAnurRund, MargoniteAnurVu, MargoniteAnurVu },
 		{ MargoniteAnurDabi, MargoniteAnurRund, MargoniteAnurSu, MargoniteAnurVu, MargoniteAnurVu },
@@ -43,13 +43,13 @@ namespace gbr::Tank::Controllers::City {
 
 			// update groups and remove stale ones
 			for (auto it = _margoGroups.begin(); it != _margoGroups.end();) {
-				if (!(*it)->StillExists()) {
-					delete *it;
-					it = _margoGroups.erase(it);
-				}
-				else {
+				if ((*it)->StillExists()) {
 					(*it)->Update();
 					it++;
+				}
+				else {
+					delete *it;
+					it = _margoGroups.erase(it);
 				}
 			}
 
@@ -70,9 +70,9 @@ namespace gbr::Tank::Controllers::City {
 					continue;
 
 				auto wasAddedToBall = false;
-				for (auto potentialBall : newPotentialBalls) {
+				for (auto& potentialBall : newPotentialBalls) {
 					for (auto ballAgent : potentialBall) {
-						if (agent->pos.SquaredDistanceTo(ballAgent->pos) < GW::Constants::SqrRange::Area) {
+						if (agent->pos.SquaredDistanceTo(ballAgent->pos) < 700*700) {
 							wasAddedToBall = true;
 							break;
 						}
@@ -89,9 +89,9 @@ namespace gbr::Tank::Controllers::City {
 				}
 			}
 
-			for (auto potentialBall : newPotentialBalls) {
+			for (auto& potentialBall : newPotentialBalls) {
 				if (potentialBall.size() == 5 || potentialBall.size() == 6) {
-					for (auto validModelIds : MargoGroup::PossibleGroups) {
+					for (auto& validModelIds : MargoGroup::PossibleGroups) {
 						if (MatchesGroup(potentialBall, validModelIds)) {
 							_margoGroups.push_back(new MargoGroup(potentialBall));
 							break;
@@ -102,7 +102,7 @@ namespace gbr::Tank::Controllers::City {
 		}
 	}
 
-	bool MargoAnalyzer::MatchesGroup(std::vector<GW::Agent*> potentialBall, std::vector<int> validModelIds) {
+	bool MargoAnalyzer::MatchesGroup(const std::vector<GW::Agent*>& potentialBall, const std::vector<int>& validModelIds) {
 		auto matched = std::vector<GW::Agent*>();
 
 		for (auto modelId : validModelIds) {
@@ -124,7 +124,7 @@ namespace gbr::Tank::Controllers::City {
 
 	bool MargoAnalyzer::AgentIsMargonite(GW::Agent* agent) {
 		return agent
-			&& agent->GetIsLivingType()
+			&& agent->GetIsCharacterType()
 			&& agent->Allegiance == 3
 			&& !agent->GetIsDead()
 			&& (agent->PlayerNumber == GW::Constants::ModelID::DoA::MargoniteAnurDabi
@@ -141,7 +141,7 @@ namespace gbr::Tank::Controllers::City {
 
 	bool MargoAnalyzer::PlayerShouldWait() {
 		for (auto group : _margoGroups) {
-			if (!group->IsAggroed() && group->GetDistanceFromPlayer() < 1400 && group->GetTimeBeforeBall() < 2000) {
+			if (!group->IsAggroed() && group->GetDistanceFromPlayer() < 1600 && group->GetTimeBeforeBall() < 3000) {
 				return true;
 			}
 		}
@@ -164,7 +164,6 @@ namespace gbr::Tank::Controllers::City {
 	bool MargoAnalyzer::MargoGroup::StillExists() {
 		return std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
 			auto agent = GW::Agents::GetAgentByID(id);
-
 			return agent && !agent->GetIsDead();
 		});
 	}
@@ -189,10 +188,13 @@ namespace gbr::Tank::Controllers::City {
 	void MargoAnalyzer::MargoGroup::Update() {
 
 		// remove any dead agents
-		std::remove_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
-			auto agent = GW::Agents::GetAgentByID(id);
-			return !agent || agent->GetIsDead();
-		});
+		_agentIds.erase(
+			std::remove_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+				auto agent = GW::Agents::GetAgentByID(id);
+				return !agent || agent->GetIsDead();
+			}),
+			_agentIds.end()
+		);
 
 		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) > 1.3f; })) {
 
@@ -202,14 +204,14 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
-			if ((lastState.state && StateType::Running) || (lastState.state && StateType::Collapsing))
+			if ((lastState.state & StateType::Running) || (lastState.state & StateType::Collapsing))
 				return;
 
-			if (!(lastState.state && StateType::Wandering)) {
+			if (!(lastState.state & StateType::Wandering)) {
 				_states.push_back(State(StateType::Running, GetTickCount()));
 				return;
 			}
-			if (!(lastState.state && StateType::Collapsed)) {
+			if (!(lastState.state & StateType::Collapsed)) {
 				_states.push_back(State(StateType::Collapsing, GetTickCount()));
 				return;
 			}
@@ -228,14 +230,14 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
-			if (lastState.state && StateType::Wandering)
+			if (lastState.state & StateType::Wandering)
 				return;
 
 			_states.push_back(State(StateType::Wandering, GetTickCount()));
 			return;
 		}
 
-		if (std::all_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) < 0.1f; })) {
+		//if (std::all_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) < 0.1f; })) {
 
 			if (_states.size() == 0) {
 				_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander, GetTickCount()));
@@ -243,21 +245,21 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
-			if ((lastState.state && StateType::Collapsed) || (lastState.state && StateType::WaitingToWander))
+			if ((lastState.state & StateType::Collapsed) || (lastState.state & StateType::WaitingToWander))
 				return;
 
-			if (!(lastState.state && StateType::Running)) {
+			if (!(lastState.state & StateType::Running)) {
 				_states.push_back(State(StateType::Collapsed, GetTickCount()));
 				return;
 			}
-			if (!(lastState.state && StateType::Collapsing)) {
+			if (!(lastState.state & StateType::Collapsing)) {
 				_states.push_back(State(StateType::WaitingToWander, GetTickCount()));
 				return;
 			}
 
 			_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander, GetTickCount()));
 			return;
-		}
+		//}
 	}
 
 	bool MargoAnalyzer::MargoGroup::ContainsAgent(DWORD agentId) {
@@ -274,41 +276,40 @@ namespace gbr::Tank::Controllers::City {
 			return 0;
 
 		auto lastState = _states.back();
-		if ((lastState.state && StateType::Collapsed) || (lastState.state && StateType::Collapsing)) {
+		if ((lastState.state & StateType::Collapsed) || (lastState.state & StateType::Collapsing)) {
 			return 0;
 		}
 
-		if (lastState.state && StateType::Wandering) {
+		if (lastState.state & StateType::Wandering) {
 			if (_states.size() == 1) {
 				return 0;
 			}
 			else {
 				auto timeSpentWandering = GetTickCount() - lastState.tick;
-
 				return WanderingTime - timeSpentWandering;
 			}
 		}
 
-		if (lastState.state && StateType::WaitingToWander) {
+		if (lastState.state & StateType::WaitingToWander) {
 			if (_states.size() == 1) {
 				return WanderingTime;
 			}
 			else {
 				auto timeSpentWaiting = GetTickCount() - lastState.tick;
-
 				return WanderingTime + WaitingTime - timeSpentWaiting;
 			}
 		}
-		if (lastState.state && StateType::Running) {
+		if (lastState.state & StateType::Running) {
 			if (_states.size() == 1) {
 				return WanderingTime + WaitingTime;
 			}
 			else {
 				auto timeSpentRunning = GetTickCount() - lastState.tick;
-
 				return WanderingTime + WaitingTime + RunningTime - timeSpentRunning;
 			}
 		}
+
+		return 0;
 	}
 
 	float MargoAnalyzer::MargoGroup::GetDistanceFromPlayer() {
@@ -318,9 +319,19 @@ namespace gbr::Tank::Controllers::City {
 			auto agent1 = GW::Agents::GetAgentByID(id1);
 			auto agent2 = GW::Agents::GetAgentByID(id2);
 
+			if (!agent1)
+				return false;
+
+			if (!agent2)
+				return true;
+
 			return agent1->pos.SquaredDistanceTo(playerPos) < agent2->pos.SquaredDistanceTo(playerPos);
 		});
 
-		return GW::Agents::GetAgentByID(closestAgentId)->pos.DistanceTo(playerPos);
+		auto agent = GW::Agents::GetAgentByID(closestAgentId);
+		if (!agent)
+			return GW::Constants::Range::Compass;
+
+		return agent->pos.DistanceTo(playerPos);
 	}
 }
