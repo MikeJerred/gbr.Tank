@@ -1,6 +1,9 @@
 #pragma once
 
+#include <algorithm>
+#include <iterator>
 #include <map>
+#include <sstream>
 
 #include <GWCA/GWCA.h>
 #include <GWCA/GWStructures.h>
@@ -29,6 +32,7 @@ namespace gbr::Tank::Controllers::City {
 		class MargoGroup {
 		private:
 			enum class StateType {
+				None = 0,
 				Wandering = 1 << 0,
 				Collapsing = 1 << 1,
 				Collapsed = 1 << 2,
@@ -62,6 +66,33 @@ namespace gbr::Tank::Controllers::City {
 			static float GetSpeed(DWORD agentId);
 			DWORD GetTimeBeforeBall();
 			float GetDistanceFromPlayer();
+			float GetSqrDistanceFrom(float x, float y);
+
+			std::wstring GetLastStateName() {
+				std::vector<std::wstring> stateNames;
+
+				if (_states.size() == 0)
+					return L"None";
+
+				auto state = _states.back().state;
+
+				if (state & StateType::Wandering)
+					stateNames.push_back(L"Wandering");
+				if (state & StateType::Collapsing)
+					stateNames.push_back(L"Collapsing");
+				if (state & StateType::Collapsed)
+					stateNames.push_back(L"Collapsed");
+				if (state & StateType::Running)
+					stateNames.push_back(L"Running");
+				if (state & StateType::WaitingToWander)
+					stateNames.push_back(L"WaitingToWander");
+
+				std::wostringstream stream;
+				for (auto val : stateNames) {
+					stream << val << L", ";
+				}
+				return stream.str();
+			}
 		};
 
 		std::vector<MargoGroup*> _margoGroups;
@@ -75,5 +106,6 @@ namespace gbr::Tank::Controllers::City {
 		bool AgentIsMargonite(GW::Agent* agent);
 
 		bool PlayerShouldWait();
+		bool AllGroupsInRangeAggroed(float x, float y, float sqrRange);
 	};
 }

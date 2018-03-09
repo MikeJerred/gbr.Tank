@@ -25,8 +25,13 @@ namespace gbr::Tank::Controllers::City {
 
 	const std::vector<GW::GamePos> CityController::TeamWaypoints {
 		GW::GamePos(-16700, -9805),
-		GW::GamePos(-15605, -10391),
-		GW::GamePos(-15232, -11460),
+		GW::GamePos(-16214, -9805),
+		GW::GamePos(-15825, -10046),
+		GW::GamePos(-15736, -10369),
+		GW::GamePos(-15577, -10853),
+		GW::GamePos(-15320, -11417),
+		GW::GamePos(-15150, -11806),
+		GW::GamePos(-14983, -12094),
 		GW::GamePos(-14763, -12264),
 		GW::GamePos(-14038, -12690),
 		GW::GamePos(-12981, -12835),
@@ -112,7 +117,8 @@ namespace gbr::Tank::Controllers::City {
 				GW::GamePos(-11928, -11134),
 				GW::GamePos(-11439, -11083),
 				GW::GamePos(-11059, -10646),
-				GW::GamePos(-10881, -10500)
+				GW::GamePos(-10881, -10500),
+				GW::GamePos(-10772, -10517)
 			},
 			[=]() { return Maintenence(); },
 			5000);
@@ -128,7 +134,8 @@ namespace gbr::Tank::Controllers::City {
 				GW::GamePos(-12030, -11219),
 				GW::GamePos(-12371, -10889),
 				GW::GamePos(-12347, -10428),
-				GW::GamePos(-12336, -10051)
+				GW::GamePos(-12336, -10051),
+				GW::GamePos(-12436, -9874)
 			},
 			[=]() { return Maintenence(); },
 			5000);
@@ -143,7 +150,8 @@ namespace gbr::Tank::Controllers::City {
 		auto ball = Utilities::Ball(-11760, -10964);
 
 		LogUtility::Log(L"Jump into ball");
-		while (!SkillUtility::TryUseSkill(GW::Constants::SkillID::Deaths_Charge, ball.GetCentralTarget()->Id)) {
+		while (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(ball.GetCentralTarget()->pos) > GW::Constants::SqrRange::Nearby) {
+			SkillUtility::TryUseSkill(GW::Constants::SkillID::Deaths_Charge, ball.GetCentralTarget()->Id);
 			co_await Sleep(100);
 			co_await Maintenence();
 		}
@@ -169,24 +177,68 @@ namespace gbr::Tank::Controllers::City {
 
 
 		// waypoints for 2nd ball
+		// todo: ensure that each group is aggroed: often the 1st group is missed at the moment
+		// when balling, another pass needs to be made to pull the runds in
 		LogUtility::Log(L"Starting 2nd ball");
 		co_await RunUtility::FollowWaypointsWithoutStuck(
 			std::vector<GW::GamePos> {
 				GW::GamePos(-10232, -10986),
 				GW::GamePos(-9253, -10304),
-				GW::GamePos(-8265, -10799),
-				GW::GamePos(-7277, -10088),
-				GW::GamePos(-6031, -10607),
-				GW::GamePos(-5014, -10890),
-				GW::GamePos(-4976, -9722),
-				GW::GamePos(-5533, -8860),
-				GW::GamePos(-6870, -7917),
-				GW::GamePos(-7037, -8188),
-				GW::GamePos(-6540, -8314),
-				GW::GamePos(-6126, -8276),
-				GW::GamePos(-5646, -8857),
-				GW::GamePos(-5992, -9503),
-				GW::GamePos(-7040, -9634)
+				GW::GamePos(-8842, -9791),
+				GW::GamePos(-8581, -9424)
+			},
+			[=]() { return Maintenence(); },
+			5000);
+
+		while (!_margoAnalyzer->AllGroupsInRangeAggroed(-9728, -9462, GW::Constants::SqrRange::Spirit)) {
+			co_await Sleep(100);
+			co_await Maintenence();
+		}
+
+		co_await RunUtility::FollowWaypointsWithoutStuck(
+			std::vector<GW::GamePos> {
+				GW::GamePos(-9029, -10340),
+				GW::GamePos(-8726, -10780),
+				GW::GamePos(-8028, -10960),
+				GW::GamePos(-7114, -10910),
+				GW::GamePos(-6166, -10904),
+				GW::GamePos(-5208, -10982),
+				GW::GamePos(-4499, -11001)
+			},
+			[=]() { return Maintenence(); },
+			5000);
+
+		while (!_margoAnalyzer->AllGroupsInRangeAggroed(-3791, -11335, GW::Constants::SqrRange::Spirit)) {
+			co_await Sleep(100);
+			co_await Maintenence();
+		}
+
+		co_await RunUtility::FollowWaypointsWithoutStuck(
+			std::vector<GW::GamePos> {
+				GW::GamePos(-4829, -10306),
+				GW::GamePos(-5477, -9982),
+				GW::GamePos(-5873, -9549),
+				GW::GamePos(-6018, -8802),
+				GW::GamePos(-6290, -8481),
+				GW::GamePos(-6867, -8033),
+				GW::GamePos(-7234, -7367),
+				GW::GamePos(-7439, -7647),
+				GW::GamePos(-7290, -8028),
+				GW::GamePos(-6888, -8028),
+				GW::GamePos(-6462, -8093),
+				GW::GamePos(-6083, -8371),
+				GW::GamePos(-5726, -8768),
+				GW::GamePos(-5990, -9269),
+				GW::GamePos(-6315, -9678),
+				GW::GamePos(-6683, -9966),
+				GW::GamePos(-7030, -9767),
+				GW::GamePos(-7459, -9736),
+				GW::GamePos(-7229, -10029),
+				GW::GamePos(-6552, -9912),
+				GW::GamePos(-6003, -9584),
+				GW::GamePos(-5999, -8910),
+				GW::GamePos(-6226, -8542),
+				GW::GamePos(-5784, -8315)
 			},
 			[=]() { return Maintenence(); },
 			5000);
@@ -200,7 +252,8 @@ namespace gbr::Tank::Controllers::City {
 		ball = Utilities::Ball(-6223, -9121);
 
 		LogUtility::Log(L"Jumping into ball");
-		while (!SkillUtility::TryUseSkill(GW::Constants::SkillID::Deaths_Charge, ball.GetCentralTarget()->Id)) {
+		while (GW::Agents::GetPlayer()->pos.SquaredDistanceTo(ball.GetCentralTarget()->pos) > GW::Constants::SqrRange::Nearby) {
+			SkillUtility::TryUseSkill(GW::Constants::SkillID::Deaths_Charge, ball.GetCentralTarget()->Id);
 			co_await Sleep(100);
 			co_await Maintenence();
 		}
@@ -276,8 +329,7 @@ namespace gbr::Tank::Controllers::City {
 		co_await MaintainEnchants();
 
 		if (!KeepBonderInRange()) {
-			// stop moving
-			GW::Agents::Move(GW::Agents::GetPlayer()->pos);
+			AgentUtility::StopMoving();
 
 			while (!KeepBonderInRange()) {
 				co_await Sleep(100);
@@ -287,8 +339,7 @@ namespace gbr::Tank::Controllers::City {
 
 		if (_margoAnalyzer->PlayerShouldWait()) {
 			LogUtility::Log(L"Waiting for balled group");
-			// stop moving
-			GW::Agents::Move(GW::Agents::GetPlayer()->pos);
+			AgentUtility::StopMoving();
 
 			while (_margoAnalyzer->PlayerShouldWait()) {
 				co_await Sleep(100);
@@ -333,7 +384,7 @@ namespace gbr::Tank::Controllers::City {
 	}
 
 	awaitable<void> CityController::MaintainEnchants() {
-		while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+		while (GW::Agents::GetPlayer()->Skill > 0) {
 			co_await Sleep(100);
 			CheckForFail();
 		}
@@ -341,11 +392,7 @@ namespace gbr::Tank::Controllers::City {
 		auto sfEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Shadow_Form);
 
 		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 10000) {
-			if (SkillUtility::TryUseSkill(GW::Constants::SkillID::I_Am_Unstoppable, 0)) {
-
-				co_await Sleep(100);
-				CheckForFail();
-			}
+			SkillUtility::TryUseSkill(GW::Constants::SkillID::I_Am_Unstoppable, 0);
 		}
 
 		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 3000) {
@@ -358,10 +405,13 @@ namespace gbr::Tank::Controllers::City {
 			co_await Sleep(500);
 			CheckForFail();
 
-			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+			while (GW::Agents::GetPlayer()->Skill > 0) {
 				co_await Sleep(100);
 				CheckForFail();
 			}
+
+			co_await Sleep(200);
+			CheckForFail();
 		}
 
 		auto shroudEffect = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Shroud_of_Distress);
@@ -372,17 +422,17 @@ namespace gbr::Tank::Controllers::City {
 			co_await Sleep(500);
 			CheckForFail();
 
-			while (GW::Skillbar::GetPlayerSkillbar().Casting > 0) {
+			while (GW::Agents::GetPlayer()->Skill > 0) {
 				co_await Sleep(100);
 				CheckForFail();
 			}
+
+			co_await Sleep(200);
+			CheckForFail();
 		}
 
 		if (GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Quickening_Zephyr).SkillId > 0) {
-			if (SkillUtility::TryUseSkill(GW::Constants::SkillID::I_Am_Unstoppable, 0)) {
-				co_await Sleep(100);
-				CheckForFail();
-			}
+			SkillUtility::TryUseSkill(GW::Constants::SkillID::I_Am_Unstoppable, 0);
 		}
 	}
 
@@ -396,12 +446,19 @@ namespace gbr::Tank::Controllers::City {
 		auto distance = bonder->pos.DistanceTo(GW::Agents::GetPlayer()->pos);
 
 		if (distance > 4000) {
+			auto wallEnemies = _cityWallAnalyzer->GetAllLivingEnemies();
+
 			for (auto waypoint : TeamWaypoints) {
 				if (waypoint.DistanceTo(GW::Agents::GetPlayer()->pos) < 3800) {
-					if (AgentUtility::GetEnemiesInRange(waypoint.x, waypoint.y, GW::Constants::Range::Spellcast).size() <= 1) {
+					auto enemiesInRange = AgentUtility::GetEnemiesInRange(waypoint.x, waypoint.y, GW::Constants::Range::Spellcast);
+
+					if (std::all_of(enemiesInRange.begin(), enemiesInRange.end(), [&](GW::Agent* agent) {
+						return std::any_of(wallEnemies.begin(), wallEnemies.end(), [=](DWORD id) { return agent->Id == id; });
+					})) {
 						TeamUtility::Move(waypoint.x, waypoint.y);
+
+						break;
 					}
-					break;
 				}
 			}
 

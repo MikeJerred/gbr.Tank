@@ -5,10 +5,12 @@
 #include "../../Awaitable.h"
 #include "../../Exceptions.h"
 #include "../../Utilities/AgentUtility.h"
+#include "../../Utilities/LogUtility.h"
 #include "MargoAnalyzer.h"
 
 namespace gbr::Tank::Controllers::City {
 	using AgentUtility = Utilities::AgentUtility;
+	using LogUtility = Utilities::LogUtility;
 	using namespace GW::Constants::ModelID::DoA;
 
 	const std::vector<std::vector<int>> MargoAnalyzer::MargoGroup::PossibleGroups {
@@ -45,7 +47,7 @@ namespace gbr::Tank::Controllers::City {
 			for (auto it = _margoGroups.begin(); it != _margoGroups.end();) {
 				if ((*it)->StillExists()) {
 					(*it)->Update();
-					it++;
+					++it;
 				}
 				else {
 					delete *it;
@@ -100,6 +102,19 @@ namespace gbr::Tank::Controllers::City {
 				}
 			}
 		}
+
+		// log info
+		static int tickCount = 0;
+		if (tickCount > 2000) {
+			tickCount = 0;
+
+			int i = 0;
+			for (auto grp : _margoGroups) {
+				++i;
+				LogUtility::Log(i + L": " + grp->GetLastStateName());
+			}
+
+		}
 	}
 
 	bool MargoAnalyzer::MatchesGroup(const std::vector<GW::Agent*>& potentialBall, const std::vector<int>& validModelIds) {
@@ -141,12 +156,22 @@ namespace gbr::Tank::Controllers::City {
 
 	bool MargoAnalyzer::PlayerShouldWait() {
 		for (auto group : _margoGroups) {
-			if (!group->IsAggroed() && group->GetDistanceFromPlayer() < 1600 && group->GetTimeBeforeBall() < 3000) {
+			if (!group->IsAggroed() && group->GetDistanceFromPlayer() < 1500 && group->GetTimeBeforeBall() < 3000) {
 				return true;
 			}
 		}
 
 		return false;
+	}
+
+	bool MargoAnalyzer::AllGroupsInRangeAggroed(float x, float y, float sqrRange) {
+		for (auto group : _margoGroups) {
+			if (!group->IsAggroed() && group->GetSqrDistanceFrom(x, y) < sqrRange) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 
@@ -188,15 +213,18 @@ namespace gbr::Tank::Controllers::City {
 	void MargoAnalyzer::MargoGroup::Update() {
 
 		// remove any dead agents
-		_agentIds.erase(
-			std::remove_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
-				auto agent = GW::Agents::GetAgentByID(id);
-				return !agent || agent->GetIsDead();
-			}),
-			_agentIds.end()
-		);
+		for (auto it = _agentIds.begin(); it != _agentIds.end();) {
+			auto agent = GW::Agents::GetAgentByID(*it);
+			if (!agent || agent->GetIsDead()) {
+				it = _agentIds.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
 
-		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) > 1.3f; })) {
+		// if at least 3 of them are running
+		if (std::count_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) > 1.0f; }) >= 3) {
 
 			if (_states.size() == 0) {
 				_states.push_back(State(StateType::Collapsing | StateType::Running, GetTickCount()));
@@ -204,14 +232,26 @@ namespace gbr::Tank::Controllers::City {
 			}
 
 			auto lastState = _states.back();
+			if (lastState.state == (StateType::Running | StateType::Collapsing)) {
+				if (GetTickCount() > lastState.tick + 3000)
+					lastState.state = StateType::Running;
+
+				return;
+			}
+
 			if ((lastState.state & StateType::Running) || (lastState.state & StateType::Collapsing))
 				return;
 
-			if (!(lastState.state & StateType::Wandering)) {
+			if (lastState.state == StateType::Wandering) {
+				_states.push_back(State(StateType::Running | StateType::Collapsing, GetTickCount()));
+				return;
+			}
+
+			if (!(lastState.state & StateType::Wandering) && (lastState.state & StateType::Collapsed)) {
 				_states.push_back(State(StateType::Running, GetTickCount()));
 				return;
 			}
-			if (!(lastState.state & StateType::Collapsed)) {
+			if (!(lastState.state & StateType::Collapsed) && (lastState.state & StateType::Wandering)) {
 				_states.push_back(State(StateType::Collapsing, GetTickCount()));
 				return;
 			}
@@ -220,46 +260,50 @@ namespace gbr::Tank::Controllers::City {
 			return;
 		}
 
-		if (std::any_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
+		// if at least 3 of them are wandering
+		if (std::count_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) {
 			auto speed = GetSpeed(id);
-			return speed < 1.3f && speed > 0.1f;
-		})) {
+			return speed <= 1.0f && speed > 0.3f;
+		}) >= 3) {
 
 			if (_states.size() == 0) {
 				_states.push_back(State(StateType::Wandering, GetTickCount()));
+				return;
 			}
 
 			auto lastState = _states.back();
-			if (lastState.state & StateType::Wandering)
+			if (lastState.state & StateType::Wandering) {
+				lastState.state = StateType::Wandering;
 				return;
+			}
 
 			_states.push_back(State(StateType::Wandering, GetTickCount()));
 			return;
 		}
 
-		//if (std::all_of(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) < 0.1f; })) {
-
+		// if at least 3 of them are still
+		if (std::count_if(_agentIds.begin(), _agentIds.end(), [](DWORD id) { return GetSpeed(id) <= 0.1f; }) >= 3) {
 			if (_states.size() == 0) {
-				_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander, GetTickCount()));
+				_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander | StateType::Wandering, GetTickCount()));
 				return;
 			}
 
 			auto lastState = _states.back();
-			if ((lastState.state & StateType::Collapsed) || (lastState.state & StateType::WaitingToWander))
+			if ((lastState.state & StateType::Collapsed) || (lastState.state & StateType::WaitingToWander) || (lastState.state & StateType::Wandering))
 				return;
 
-			if (!(lastState.state & StateType::Running)) {
+			if (!(lastState.state & StateType::Running) && (lastState.state & StateType::Collapsing)) {
 				_states.push_back(State(StateType::Collapsed, GetTickCount()));
 				return;
 			}
-			if (!(lastState.state & StateType::Collapsing)) {
+			if (!(lastState.state & StateType::Collapsing) && (lastState.state & StateType::Running)) {
 				_states.push_back(State(StateType::WaitingToWander, GetTickCount()));
 				return;
 			}
 
 			_states.push_back(State(StateType::Collapsed | StateType::WaitingToWander, GetTickCount()));
 			return;
-		//}
+		}
 	}
 
 	bool MargoAnalyzer::MargoGroup::ContainsAgent(DWORD agentId) {
@@ -299,6 +343,7 @@ namespace gbr::Tank::Controllers::City {
 				return WanderingTime + WaitingTime - timeSpentWaiting;
 			}
 		}
+
 		if (lastState.state & StateType::Running) {
 			if (_states.size() == 1) {
 				return WanderingTime + WaitingTime;
@@ -333,5 +378,28 @@ namespace gbr::Tank::Controllers::City {
 			return GW::Constants::Range::Compass;
 
 		return agent->pos.DistanceTo(playerPos);
+	}
+
+	float MargoAnalyzer::MargoGroup::GetSqrDistanceFrom(float x, float y) {
+		auto pos = GW::GamePos(x, y);
+
+		auto closestAgentId = *std::min_element(_agentIds.begin(), _agentIds.end(), [=](DWORD id1, DWORD id2) {
+			auto agent1 = GW::Agents::GetAgentByID(id1);
+			auto agent2 = GW::Agents::GetAgentByID(id2);
+
+			if (!agent1)
+				return false;
+
+			if (!agent2)
+				return true;
+
+			return agent1->pos.SquaredDistanceTo(pos) < agent2->pos.SquaredDistanceTo(pos);
+		});
+
+		auto agent = GW::Agents::GetAgentByID(closestAgentId);
+		if (!agent)
+			return GW::Constants::Range::Compass;
+
+		return agent->pos.SquaredDistanceTo(pos);
 	}
 }

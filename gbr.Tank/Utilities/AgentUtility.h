@@ -14,6 +14,8 @@ namespace gbr::Tank::Utilities {
 		static std::vector<GW::Agent*> GetEnemiesInRange(float x, float y, float range);
 
 		static awaitable<void> WaitForSettle(std::function<awaitable<void>()> afterSleepCheck);
+
+		static void StopMoving();
 	};
 
 

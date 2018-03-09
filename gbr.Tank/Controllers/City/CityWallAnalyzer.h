@@ -28,5 +28,7 @@ namespace gbr::Tank::Controllers::City {
 		void Tick();
 		bool IsWallDead();
 		CityWallEnemy* GetNextWallEnemy();
+
+		std::vector<DWORD> GetAllLivingEnemies();
 	};
 }

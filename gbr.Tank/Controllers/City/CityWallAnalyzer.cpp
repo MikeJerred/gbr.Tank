@@ -68,4 +68,29 @@ namespace gbr::Tank::Controllers::City {
 
 		return nullptr;
 	}
+
+	std::vector<DWORD> CityWallAnalyzer::GetAllLivingEnemies() {
+		auto ids = std::vector<DWORD>();
+
+		auto agentArray = GW::Agents::GetAgentArray();
+		if (agentArray.valid()) {
+			for (auto agent : agentArray) {
+				if (!agent
+					|| !agent->GetIsCharacterType()
+					|| agent->Allegiance != 3
+					|| (agent->PlayerNumber != GW::Constants::ModelID::DoA::MargoniteAnurSu && agent->PlayerNumber != GW::Constants::ModelID::DoA::MargoniteAnurMank))
+					continue;
+
+				for (auto enemy : _enemies) {
+					if (agent->pos.SquaredDistanceTo(enemy.position) < GW::Constants::SqrRange::Adjacent) {
+						if (!agent->GetIsDead()) {
+							ids.push_back(agent->Id);
+						}
+					}
+				}
+			}
+		}
+
+		return ids;
+	}
 }
