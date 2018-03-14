@@ -6,6 +6,7 @@
 
 #include "Pathing/PathSearch.h"
 #include "AgentUtility.h"
+#include "LogUtility.h"
 #include "RunUtility.h"
 
 namespace gbr::Tank::Utilities {
@@ -77,7 +78,7 @@ namespace gbr::Tank::Utilities {
 					break;
 
 				if (AgentUtility::GetEnemiesInRange(currentWaypoint.x, currentWaypoint.y, 100).size() > 0
-					&& GW::Agents::GetPlayer()->pos.SquaredDistanceTo(currentWaypoint) <= GW::Constants::SqrRange::Area) {
+					&& GW::Agents::GetPlayer()->pos.DistanceTo(currentWaypoint) <= (GW::Constants::Range::Earshot / 2)) {
 					break;
 				}
 
@@ -119,14 +120,16 @@ namespace gbr::Tank::Utilities {
 
 		auto idealAngle = playerPos.AngleBetween(posToGoTowards);
 
-		float bestAngle = wrapAngle(idealAngle + pi/2.0);
+		auto bestAngleDelta = pi / 2.0f;
 		DWORD bestAgentId = 0;
 
 		for (auto agent : agents) {
 			auto angle = playerPos.AngleBetween(agent->pos);
-			if (abs(idealAngle - angle) < abs(idealAngle - bestAngle)) {
+			auto angleDelta = abs(wrapAngle(idealAngle - angle));
+
+			if (angleDelta < bestAngleDelta) {
 				bestAgentId = agent->Id;
-				bestAngle = angle;
+				bestAngleDelta = angleDelta;
 			}
 		}
 

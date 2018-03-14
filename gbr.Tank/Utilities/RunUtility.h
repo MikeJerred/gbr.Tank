@@ -15,8 +15,18 @@ namespace gbr::Tank::Utilities {
 		static DWORD FindBestHoSTarget(GW::GamePos& posToGoTowards);
 
 		static inline double wrapAngle(double angle) {
-			static const double twoPi = 2.0 * 3.141592865358979;
-			return angle - twoPi * floor(angle / twoPi);
+			static const double pi = 3.14159265358979;
+			if (angle > pi) {
+				angle -= 2 * pi;
+				return wrapAngle(angle);
+			}
+
+			if (angle < -pi) {
+				angle += 2 * pi;
+				return wrapAngle(angle);
+			}
+
+			return angle;
 		}
 	};
 }

@@ -43,6 +43,7 @@ namespace gbr::Tank::Controllers {
 			if (GW::Map::GetInstanceType() == GW::Constants::InstanceType::Explorable) {
 				while (!GW::PartyMgr::GetIsPartyDefeated()) {
 					// resign
+
 					co_await Sleep(2000);
 				}
 
@@ -84,7 +85,6 @@ namespace gbr::Tank::Controllers {
 			co_await Sleep(2000);
 		}
 
-		co_await Sleep(3000);
 		auto cityController = new City::CityController();
 
 		try {

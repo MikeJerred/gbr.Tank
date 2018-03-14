@@ -61,7 +61,9 @@ namespace gbr::Tank::Controllers::City {
 
 			bool StillExists();
 			bool IsAggroed();
+			bool AreMostlyBalledTogether();
 			void Update();
+			void PushBackState(StateType state);
 			bool ContainsAgent(DWORD agentId);
 			static float GetSpeed(DWORD agentId);
 			DWORD GetTimeBeforeBall();
@@ -69,12 +71,14 @@ namespace gbr::Tank::Controllers::City {
 			float GetSqrDistanceFrom(float x, float y);
 
 			std::wstring GetLastStateName() {
-				std::vector<std::wstring> stateNames;
-
 				if (_states.size() == 0)
 					return L"None";
 
-				auto state = _states.back().state;
+				return GetStateName(_states.back().state);
+			}
+
+			std::wstring GetStateName(StateType state) {
+				std::vector<std::wstring> stateNames;
 
 				if (state & StateType::Wandering)
 					stateNames.push_back(L"Wandering");

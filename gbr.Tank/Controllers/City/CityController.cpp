@@ -73,6 +73,8 @@ namespace gbr::Tank::Controllers::City {
 	awaitable<void> CityController::DoRun() {
 		LogUtility::Log(L"Starting City");
 
+		co_await Sleep(3000);
+
 		// take quest
 		auto questSnake = AgentUtility::FindAgent(-17710, -8811, 2000, 4998);
 		if (!questSnake) {
@@ -176,6 +178,13 @@ namespace gbr::Tank::Controllers::City {
 		co_await TeamUtility::CleanupEnemies(GW::Agents::GetPlayer()->X, GW::Agents::GetPlayer()->Y, [=]() { return Maintenence(); });
 
 
+		// collect any drops
+		LogUtility::Log(L"Collecting drops");
+		TeamUtility::Move(-11760, -10964);
+		co_await Sleep(4000);
+		LogUtility::Log(L"Waiting for bonds");
+		co_await WaitForBonds();
+
 		// waypoints for 2nd ball
 		// todo: ensure that each group is aggroed: often the 1st group is missed at the moment
 		// when balling, another pass needs to be made to pull the runds in
@@ -227,12 +236,28 @@ namespace gbr::Tank::Controllers::City {
 				GW::GamePos(-6888, -8028),
 				GW::GamePos(-6462, -8093),
 				GW::GamePos(-6083, -8371),
-				GW::GamePos(-5726, -8768),
+				GW::GamePos(-5726, -8768)
+			},
+			[=]() { return Maintenence(); },
+			5000);
+
+		co_await Sleep(4000, [=]() { return Maintenence(); });
+
+		co_await RunUtility::FollowWaypointsWithoutStuck(
+			std::vector<GW::GamePos> {
 				GW::GamePos(-5990, -9269),
 				GW::GamePos(-6315, -9678),
 				GW::GamePos(-6683, -9966),
 				GW::GamePos(-7030, -9767),
-				GW::GamePos(-7459, -9736),
+				GW::GamePos(-7459, -9736)
+			},
+			[=]() { return Maintenence(); },
+			5000);
+
+		co_await Sleep(2000, [=]() { return Maintenence(); });
+
+		co_await RunUtility::FollowWaypointsWithoutStuck(
+			std::vector<GW::GamePos> {
 				GW::GamePos(-7229, -10029),
 				GW::GamePos(-6552, -9912),
 				GW::GamePos(-6003, -9584),
@@ -276,6 +301,14 @@ namespace gbr::Tank::Controllers::City {
 
 		LogUtility::Log(L"Cleaning up");
 		co_await TeamUtility::CleanupEnemies(GW::Agents::GetPlayer()->X, GW::Agents::GetPlayer()->Y, [=]() { return Maintenence(); });
+
+		// collect any drops
+		LogUtility::Log(L"Collecting drops");
+		TeamUtility::Move(-6223, -9121);
+		co_await Sleep(4000);
+		LogUtility::Log(L"Waiting for bonds");
+		co_await WaitForBonds();
+
 
 		// run to gate
 		co_await RunUtility::FollowWaypointsWithoutStuck(
@@ -329,6 +362,7 @@ namespace gbr::Tank::Controllers::City {
 		co_await MaintainEnchants();
 
 		if (!KeepBonderInRange()) {
+			LogUtility::Log(L"Waiting for bonder to stay in range");
 			AgentUtility::StopMoving();
 
 			while (!KeepBonderInRange()) {
@@ -352,6 +386,8 @@ namespace gbr::Tank::Controllers::City {
 					co_await Sleep(100);
 				}
 			}
+
+			LogUtility::Log(L"Finished waiting for balled group");
 		}
 
 		co_await SpikeCityWall();
@@ -397,7 +433,8 @@ namespace gbr::Tank::Controllers::City {
 
 		if (sfEffect.SkillId == 0 || sfEffect.GetTimeRemaining() < 3000) {
 			auto qz = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Quickening_Zephyr);
-			if (qz.SkillId == 0 || qz.GetTimeRemaining() < 3000) {
+			auto bu = GW::Effects::GetPlayerEffectById(GW::Constants::SkillID::Essence_of_Celerity_item_effect);
+			if (bu.SkillId == 0 && (qz.SkillId == 0 || qz.GetTimeRemaining() < 3000)) {
 				SkillUtility::TryUseSkill(GW::Constants::SkillID::Deadly_Paradox, 0);
 			}
 

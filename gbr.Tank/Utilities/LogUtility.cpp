@@ -4,17 +4,19 @@
 #include "LogUtility.h"
 
 namespace gbr::Tank::Utilities {
-    FILE* LogUtility::logFile = nullptr;
+    std::wofstream* LogUtility::logFile = nullptr;
 
     void LogUtility::Init(std::wstring charName) {
         auto fileName = L"log - " + charName + L".txt";
 
-        _wfopen_s(&logFile, fileName.c_str(), L"w"); // comment out to stop logging
+		logFile = new std::wofstream(fileName.c_str()); // comment out to stop logging
     }
 
     void LogUtility::Close() {
-        if (logFile)
-            fclose(logFile);
+		if (logFile) {
+			logFile->close();
+			delete logFile;
+		}
     }
 
     void LogUtility::Log(std::wstring str) {
@@ -30,8 +32,8 @@ namespace gbr::Tank::Utilities {
         wchar_t buffer[16];
         wcsftime(buffer, sizeof(buffer), L"%H:%M:%S", &timeinfo);
 
-        fwprintf(logFile, L"[%s] %s", buffer, (str + L"\n").c_str());
+		*logFile << L"[" << buffer << L"] " << str.c_str() << L"\n";
 
-        fflush(logFile);
+		logFile->flush();
     }
 }
